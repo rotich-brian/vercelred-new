@@ -2,7 +2,6 @@ import React from "react";
 import Head from "next/head";
 import { GetServerSideProps } from "next";
 
-// Blogger API response types
 interface BloggerAuthor {
   id: string;
   displayName: string;
@@ -34,15 +33,6 @@ interface PostProps {
   path: string;
 }
 
-// Helper function for tag removal
-const removeTags = (str: string): string => {
-  if (!str) return "";
-  return str.toString()
-    .replace(/(<([^>]+)>)/gi, "")
-    .replace(/\[[^\]]*\]/, "");
-};
-
-// Helper to get first paragraph as excerpt
 const getExcerpt = (content: string): string => {
   const firstParagraph = content.split('</p>')[0].replace(/<\/?[^>]+(>|$)/g, "");
   return firstParagraph.length > 160 
@@ -59,13 +49,13 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       throw new Error("Missing Blogger API configuration");
     }
 
+    // Get the path from the URL
     const pathArr = ctx.query.postpath as string[];
-    if (!pathArr) {
+    if (!pathArr || pathArr.length === 0) {
       return { notFound: true };
     }
 
-    const path = pathArr.join("/");
-    const postId = pathArr[pathArr.length - 1]; // Assuming the last segment is the post ID
+    const path = pathArr.join('/');
 
     // Check for Facebook referrer
     const referringURL = ctx.req.headers?.referer || null;
@@ -75,26 +65,44 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       return {
         redirect: {
           permanent: false,
-          destination: `https://www.blogger.com/blog/post/${blogId}/${postId}`,
+          destination: `https://www.blogger.com/${path}`,
         },
       };
     }
 
-    // Fetch post from Blogger API
-    const response = await fetch(
-      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${postId}?key=${apiKey}`
+    // First, fetch the list of posts to find the matching URL path
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}`
     );
 
-    if (!response.ok) {
-      console.error(`Blogger API error: ${response.status}`);
+    if (!searchResponse.ok) {
+      console.error(`Blogger API error: ${searchResponse.status}`);
       return { notFound: true };
     }
 
-    const post: BloggerPost = await response.json();
+    const searchData = await searchResponse.json();
+    const matchingPost = searchData.items.find((post: BloggerPost) => {
+      // Extract the path from the Blogger post URL
+      const bloggerUrl = new URL(post.url);
+      const bloggerPath = bloggerUrl.pathname.split('/').pop();
+      return bloggerPath === path;
+    });
 
-    if (!post) {
+    if (!matchingPost) {
       return { notFound: true };
     }
+
+    // Fetch the full post data
+    const postResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${matchingPost.id}?key=${apiKey}`
+    );
+
+    if (!postResponse.ok) {
+      console.error(`Blogger API error: ${postResponse.status}`);
+      return { notFound: true };
+    }
+
+    const post: BloggerPost = await postResponse.json();
 
     return {
       props: {
