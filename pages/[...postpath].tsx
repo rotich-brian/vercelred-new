@@ -12,10 +12,6 @@ interface BloggerAuthor {
   };
 }
 
-interface BloggerImage {
-  url: string;
-}
-
 interface BloggerPost {
   id: string;
   title: string;
@@ -24,7 +20,6 @@ interface BloggerPost {
   updated: string;
   url: string;
   author: BloggerAuthor;
-  images?: BloggerImage[];
   labels?: string[];
 }
 
@@ -33,9 +28,9 @@ interface PostProps {
   host: string;
   path: string;
   structuredData: any;
+  thumbnail: string | null;
 }
 
-// Helper function to generate clean slugs
 const generateSlug = (title: string): string => {
   return title
     .toLowerCase()
@@ -43,25 +38,31 @@ const generateSlug = (title: string): string => {
     .replace(/^-+|-+$/g, '');
 };
 
-// Helper to extract slug from Blogger URL
 const extractSlugFromUrl = (url: string): string => {
   const urlParts = url.split('/');
   const lastPart = urlParts[urlParts.length - 1];
   return generateSlug(lastPart.replace('.html', ''));
 };
 
-// Helper for excerpt generation
 const getExcerpt = (content: string): string => {
-  const firstParagraph = content.split('</p>')[0].replace(/<\/?[^>]+(>|$)/g, "");
-  return firstParagraph.length > 160 
-    ? `${firstParagraph.substring(0, 157)}...` 
-    : firstParagraph;
+  const strippedContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return strippedContent.length > 160 
+    ? `${strippedContent.substring(0, 157)}...` 
+    : strippedContent;
+};
+
+// Function to extract first image from content
+const extractFirstImage = (content: string): string | null => {
+  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
+  const match = content.match(imgRegex);
+  return match ? match[1] : null;
 };
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   try {
     const apiKey = process.env.BLOGGER_API_KEY;
     const blogId = process.env.BLOGGER_BLOG_ID;
+    const defaultOgImage = process.env.DEFAULT_OG_IMAGE || 'https://your-default-image.jpg';
 
     if (!apiKey || !blogId) {
       throw new Error("Missing Blogger API configuration");
@@ -112,24 +113,39 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
     const post: BloggerPost = await postResponse.json();
 
+    // Extract thumbnail from content
+    const thumbnail = extractFirstImage(post.content) || defaultOgImage;
+
+    // Get blog information for structured data
+    const blogResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}?key=${apiKey}`
+    );
+    const blogData = await blogResponse.json();
+
     const structuredData = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
       "headline": post.title,
+      "description": getExcerpt(post.content),
+      "image": thumbnail,
       "datePublished": post.published,
       "dateModified": post.updated,
       "author": {
         "@type": "Person",
-        "name": post.author.displayName
+        "name": post.author.displayName,
+        "url": post.author.url
       },
-      "image": post.images?.[0]?.url,
       "publisher": {
         "@type": "Organization",
-        "name": ctx.req.headers.host,
+        "name": blogData.name,
         "logo": {
           "@type": "ImageObject",
           "url": `https://${ctx.req.headers.host}/logo.png`
         }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `https://${ctx.req.headers.host}/${requestedSlug}`
       }
     };
 
@@ -138,7 +154,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
         post,
         host: ctx.req.headers.host || "",
         path: requestedSlug,
-        structuredData
+        structuredData,
+        thumbnail
       },
     };
   } catch (error) {
@@ -147,34 +164,50 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   }
 };
 
-const Post: React.FC<PostProps> = ({ post, host, path, structuredData }) => {
+const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail }) => {
   if (!post || !host) {
     return <div>Error loading post</div>;
   }
 
   const canonicalUrl = `https://${host}/${path}`;
-  const featuredImage = post.images?.[0]?.url;
   const excerpt = getExcerpt(post.content);
+  const publishedDate = new Date(post.published).toISOString();
+  const modifiedDate = new Date(post.updated).toISOString();
 
   return (
     <>
       <Head>
+        {/* Basic Meta Tags */}
         <title>{post.title}</title>
-        <meta property="og:title" content={post.title} />
+        <meta name="description" content={excerpt} />
         <link rel="canonical" href={canonicalUrl} />
+
+        {/* Open Graph Tags */}
+        <meta property="og:title" content={post.title} />
         <meta property="og:description" content={excerpt} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content="en_US" />
         <meta property="og:site_name" content={host.split(".")[0]} />
-        <meta property="article:published_time" content={post.published} />
-        <meta property="article:modified_time" content={post.updated} />
-        {featuredImage && (
-          <>
-            <meta property="og:image" content={featuredImage} />
-            <meta property="og:image:alt" content={post.title} />
-          </>
-        )}
+        <meta property="og:image" content={thumbnail || ''} />
+        <meta property="og:image:alt" content={post.title} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+
+        {/* Twitter Card Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={post.title} />
+        <meta name="twitter:description" content={excerpt} />
+        <meta name="twitter:image" content={thumbnail || ''} />
+
+        {/* Article Tags */}
+        <meta property="article:published_time" content={publishedDate} />
+        <meta property="article:modified_time" content={modifiedDate} />
+        {post.labels?.map(label => (
+          <meta key={label} property="article:tag" content={label} />
+        ))}
+
+        {/* Structured Data */}
         <script 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -193,19 +226,23 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData }) => {
               />
             )}
             <span className="mr-4">By {post.author.displayName}</span>
-            <time dateTime={post.published}>
+            <time dateTime={publishedDate}>
               {new Date(post.published).toLocaleDateString()}
             </time>
           </div>
         </header>
 
-        {featuredImage && (
-          <img
-            src={featuredImage}
-            alt={post.title}
-            className="w-full h-auto rounded-lg mb-8"
-            loading="eager"
-          />
+        {thumbnail && (
+          <div className="mb-8">
+            <img
+              src={thumbnail}
+              alt={post.title}
+              className="w-full h-auto rounded-lg"
+              loading="eager"
+              width="1200"
+              height="630"
+            />
+          </div>
         )}
         
         <article 
