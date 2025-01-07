@@ -1,3 +1,4 @@
+// File: pages/[...postpath].tsx
 import React from "react";
 import Head from "next/head";
 import { GetServerSideProps } from "next";
@@ -31,8 +32,25 @@ interface PostProps {
   post: BloggerPost;
   host: string;
   path: string;
+  structuredData: any;
 }
 
+// Helper function to generate clean slugs
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
+// Helper to extract slug from Blogger URL
+const extractSlugFromUrl = (url: string): string => {
+  const urlParts = url.split('/');
+  const lastPart = urlParts[urlParts.length - 1];
+  return generateSlug(lastPart.replace('.html', ''));
+};
+
+// Helper for excerpt generation
 const getExcerpt = (content: string): string => {
   const firstParagraph = content.split('</p>')[0].replace(/<\/?[^>]+(>|$)/g, "");
   return firstParagraph.length > 160 
@@ -49,66 +67,78 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       throw new Error("Missing Blogger API configuration");
     }
 
-    // Get the path from the URL
     const pathArr = ctx.query.postpath as string[];
     if (!pathArr || pathArr.length === 0) {
       return { notFound: true };
     }
 
-    const path = pathArr.join('/');
+    const requestedSlug = pathArr[0];
 
-    // Check for Facebook referrer
-    const referringURL = ctx.req.headers?.referer || null;
-    const fbclid = ctx.query.fbclid;
-    
-    if (referringURL?.includes("facebook.com") || fbclid) {
-      return {
-        redirect: {
-          permanent: false,
-          destination: `https://www.blogger.com/${path}`,
-        },
-      };
-    }
-
-    // First, fetch the list of posts to find the matching URL path
     const searchResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}`
     );
 
     if (!searchResponse.ok) {
-      console.error(`Blogger API error: ${searchResponse.status}`);
       return { notFound: true };
     }
 
     const searchData = await searchResponse.json();
+    
     const matchingPost = searchData.items.find((post: BloggerPost) => {
-      // Extract the path from the Blogger post URL
-      const bloggerUrl = new URL(post.url);
-      const bloggerPath = bloggerUrl.pathname.split('/').pop();
-      return bloggerPath === path;
+      const postSlug = extractSlugFromUrl(post.url);
+      return postSlug === requestedSlug;
     });
 
     if (!matchingPost) {
       return { notFound: true };
     }
 
-    // Fetch the full post data
+    if (pathArr.length > 1) {
+      return {
+        redirect: {
+          destination: `/${requestedSlug}`,
+          permanent: true,
+        },
+      };
+    }
+
     const postResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${matchingPost.id}?key=${apiKey}`
     );
 
     if (!postResponse.ok) {
-      console.error(`Blogger API error: ${postResponse.status}`);
       return { notFound: true };
     }
 
     const post: BloggerPost = await postResponse.json();
 
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": post.title,
+      "datePublished": post.published,
+      "dateModified": post.updated,
+      "author": {
+        "@type": "Person",
+        "name": post.author.displayName
+      },
+      "image": post.images?.[0]?.url,
+      "publisher": {
+        "@type": "Organization",
+        "name": ctx.req.headers.host,
+        "logo": {
+          "@type": "ImageObject",
+          "url": `https://${ctx.req.headers.host}/logo.png`
+        }
+      }
+    };
+
     return {
       props: {
-        path,
         post,
         host: ctx.req.headers.host || "",
+        path: requestedSlug,
+        structuredData
       },
     };
   } catch (error) {
@@ -117,7 +147,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   }
 };
 
-const Post: React.FC<PostProps> = ({ post, host, path }) => {
+const Post: React.FC<PostProps> = ({ post, host, path, structuredData }) => {
   if (!post || !host) {
     return <div>Error loading post</div>;
   }
@@ -145,6 +175,10 @@ const Post: React.FC<PostProps> = ({ post, host, path }) => {
             <meta property="og:image:alt" content={post.title} />
           </>
         )}
+        <script 
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
       </Head>
       
       <div className="post-container max-w-4xl mx-auto px-4 py-8">
