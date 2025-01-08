@@ -303,13 +303,7 @@ const Post: React.FC<PostProps> = ({
         <header className="mb-8">
           <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
           <div className="flex items-center text-gray-600">
-            {post.author.image && (
-              <img 
-                src={post.author.image.url} 
-                alt={post.author.displayName}
-                className="w-1 h-1 rounded-full mr-3"
-              />
-            )}
+            
             <span className="mr-4">By {post.author.displayName}</span>
             <time dateTime={publishedDate}>
               {new Date(post.published).toLocaleDateString()}
