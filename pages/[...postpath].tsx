@@ -270,7 +270,7 @@ const Post: React.FC<PostProps> = ({
 
         {/* Open Graph Tags */}
         <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={excerpt} />
+        <meta property="og:description" content={post.title} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content="en_US" />
