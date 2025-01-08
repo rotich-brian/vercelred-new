@@ -55,7 +55,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   try {
     const apiKey = process.env.BLOGGER_API_KEY;
     const blogId = process.env.BLOGGER_BLOG_ID;
-    const defaultOgImage = process.env.DEFAULT_OG_IMAGE || '';
+    const defaultOgImage = process.env.DEFAULT_OG_IMAGE || '/default-image.jpg';
 
     if (!apiKey || !blogId) {
       throw new Error("Missing Blogger API configuration");
@@ -174,84 +174,63 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, featuredI
         <meta property="og:description" content={post.title} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
-        <meta property="og:locale" content="en_US" />
-        <meta property="og:site_name" content={host.split(".")[0]} />
         <meta property="og:image" content={featuredImage || ''} />
-        <meta property="og:image:alt" content={post.title} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={post.title} />
-        <meta name="twitter:description" content={post.title} />
-        <meta name="twitter:image" content={featuredImage || ''} />
-
-        <meta property="article:published_time" content={publishedDate} />
-        <meta property="article:modified_time" content={modifiedDate} />
-        {post.labels?.map(label => (
-          <meta key={label} property="article:tag" content={label} />
-        ))}
-
         <script 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </Head>
       
-      <main className="min-h-screen bg-white">
-        <article className="max-w-4xl mx-auto px-4 py-8">
+      <main className="min-h-screen bg-gray-100">
+        <article className="max-w-4xl mx-auto p-8 bg-white shadow-md rounded-lg">
           {/* Post Header */}
           <header className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
               {post.title}
             </h1>
-            
             <div className="flex items-center gap-4 text-sm text-gray-600">
               {post.author.image && (
                 <Image 
                   src={post.author.image.url} 
                   alt={post.author.displayName}
-                  width={32}
-                  height={32}
+                  width={40}
+                  height={40}
                   className="rounded-full"
                 />
               )}
               <span>{post.author.displayName}</span>
               <span>•</span>
               <time dateTime={publishedDate}>
-                {new Intl.DateTimeFormat('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                }).format(new Date(post.published))}
+                {new Date(post.published).toLocaleDateString()}
               </time>
             </div>
           </header>
 
           {/* Featured Image */}
           {featuredImage && (
-            <div className="aspect-video relative overflow-hidden rounded-xl mb-8">
+            <div className="overflow-hidden rounded-lg mb-8">
               <Image
                 src={featuredImage}
                 alt={post.title}
-                layout="fill"
-                objectFit="cover"
-                priority
-                className="transition-transform duration-300 hover:scale-105"
+                layout="responsive"
+                width={1200}
+                height={630}
+                className="rounded-lg"
               />
             </div>
           )}
 
-          {/* Title as Description */}
-          <div className="prose prose-lg max-w-none mb-8">
-            <p className="text-xl text-gray-700">{post.title}</p>
-          </div>
+          {/* Post Content */}
+          <div
+            className="prose max-w-none text-gray-800"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
 
-          {/* Read Full Post Button */}
-          <div className="flex justify-end">
+          {/* Read Full Post */}
+          <div className="mt-8 text-right">
             <Link href={post.url}>
               <a 
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow-sm hover:bg-blue-700 transition-colors duration-200 transform hover:scale-105"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 target="_blank"
                 rel="noopener noreferrer"
               >
