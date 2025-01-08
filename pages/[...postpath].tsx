@@ -29,7 +29,7 @@ interface PostProps {
   host: string;
   path: string;
   structuredData: any;
-  thumbnail: string | null;
+  featuredImage: string | null;
 }
 
 const generateSlug = (title: string): string => {
@@ -45,13 +45,6 @@ const extractSlugFromUrl = (url: string): string => {
   return generateSlug(lastPart.replace('.html', ''));
 };
 
-const getExcerpt = (content: string): string => {
-  const strippedContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  return strippedContent.length > 160 
-    ? `${strippedContent.substring(0, 157)}...` 
-    : strippedContent;
-};
-
 const extractFirstImage = (content: string): string | null => {
   const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
   const match = content.match(imgRegex);
@@ -62,7 +55,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   try {
     const apiKey = process.env.BLOGGER_API_KEY;
     const blogId = process.env.BLOGGER_BLOG_ID;
-    const defaultOgImage = process.env.DEFAULT_OG_IMAGE || 'https://your-default-image.jpg';
+    const defaultOgImage = process.env.DEFAULT_OG_IMAGE || '';
 
     if (!apiKey || !blogId) {
       throw new Error("Missing Blogger API configuration");
@@ -112,7 +105,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     }
 
     const post: BloggerPost = await postResponse.json();
-    const thumbnail = extractFirstImage(post.content) || defaultOgImage;
+    const featuredImage = extractFirstImage(post.content) || defaultOgImage;
 
     const blogResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}?key=${apiKey}`
@@ -123,8 +116,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
       "headline": post.title,
-      "description": getExcerpt(post.content),
-      "image": thumbnail,
+      "description": post.title,
+      "image": featuredImage,
       "datePublished": post.published,
       "dateModified": post.updated,
       "author": {
@@ -152,7 +145,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
         host: ctx.req.headers.host || "",
         path: requestedSlug,
         structuredData,
-        thumbnail
+        featuredImage
       },
     };
   } catch (error) {
@@ -161,41 +154,37 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   }
 };
 
-const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail }) => {
+const Post: React.FC<PostProps> = ({ post, host, path, structuredData, featuredImage }) => {
   if (!post || !host) {
     return <div>Error loading post</div>;
   }
 
   const canonicalUrl = `https://${host}/${path}`;
-  const excerpt = getExcerpt(post.content);
   const publishedDate = new Date(post.published).toISOString();
   const modifiedDate = new Date(post.updated).toISOString();
-
-  // Generate Blogger post URL using post ID
-  const bloggerPostUrl = `https://www.blogger.com/blog/post/${post.id}`;
 
   return (
     <>
       <Head>
         <title>{post.title}</title>
-        <meta name="description" content={excerpt} />
+        <meta name="description" content={post.title} />
         <link rel="canonical" href={canonicalUrl} />
 
         <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={excerpt} />
+        <meta property="og:description" content={post.title} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content="en_US" />
         <meta property="og:site_name" content={host.split(".")[0]} />
-        <meta property="og:image" content={thumbnail || ''} />
+        <meta property="og:image" content={featuredImage || ''} />
         <meta property="og:image:alt" content={post.title} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
-        <meta name="twitter:description" content={excerpt} />
-        <meta name="twitter:image" content={thumbnail || ''} />
+        <meta name="twitter:description" content={post.title} />
+        <meta name="twitter:image" content={featuredImage || ''} />
 
         <meta property="article:published_time" content={publishedDate} />
         <meta property="article:modified_time" content={modifiedDate} />
@@ -209,26 +198,27 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
         />
       </Head>
       
-      <div className="post-container max-w-4xl mx-auto px-4 py-8">
-        {/* Post Title and Author Info */}
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-4 text-gray-900">{post.title}</h1>
-          <div className="flex flex-wrap items-center gap-4 text-gray-600">
-            {post.author.image && (
-              <div className="relative w-10 h-10">
+      <main className="min-h-screen bg-white">
+        <article className="max-w-4xl mx-auto px-4 py-8">
+          {/* Post Header */}
+          <header className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              {post.title}
+            </h1>
+            
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              {post.author.image && (
                 <Image 
                   src={post.author.image.url} 
                   alt={post.author.displayName}
-                  width={40}
-                  height={40}
+                  width={32}
+                  height={32}
                   className="rounded-full"
                 />
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-gray-900">{post.author.displayName}</span>
-              <span className="text-gray-400">•</span>
-              <time dateTime={publishedDate} className="text-gray-600">
+              )}
+              <span>{post.author.displayName}</span>
+              <span>•</span>
+              <time dateTime={publishedDate}>
                 {new Intl.DateTimeFormat('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -236,63 +226,41 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
                 }).format(new Date(post.published))}
               </time>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Featured Image linking to actual post */}
-        {thumbnail && (
-          <div className="mb-8 overflow-hidden rounded-xl shadow-lg">
-            <Link href={bloggerPostUrl}>
-              <a target="_blank" rel="noopener noreferrer">
-                <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                  <Image
-                    src={thumbnail}
-                    alt={post.title}
-                    layout="fill"
-                    objectFit="cover"
-                    priority
-                    className="transition-transform duration-300 hover:scale-105"
-                  />
-                </div>
+          {/* Featured Image */}
+          {featuredImage && (
+            <div className="aspect-video relative overflow-hidden rounded-xl mb-8">
+              <Image
+                src={featuredImage}
+                alt={post.title}
+                layout="fill"
+                objectFit="cover"
+                priority
+                className="transition-transform duration-300 hover:scale-105"
+              />
+            </div>
+          )}
+
+          {/* Title as Description */}
+          <div className="prose prose-lg max-w-none mb-8">
+            <p className="text-xl text-gray-700">{post.title}</p>
+          </div>
+
+          {/* Read Full Post Button */}
+          <div className="flex justify-end">
+            <Link href={post.url}>
+              <a 
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow-sm hover:bg-blue-700 transition-colors duration-200 transform hover:scale-105"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Read Full Post →
               </a>
             </Link>
           </div>
-        )}
-
-        {/* Post Excerpt */}
-        <div className="prose prose-lg max-w-none mb-8">
-          <p className="text-gray-700 leading-relaxed">{excerpt}</p>
-        </div>
-
-        {/* Read More Button */}
-        <div className="flex justify-center mb-8">
-          <Link href={bloggerPostUrl}>
-            <a 
-              className="inline-flex items-center px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Read Full Post
-            </a>
-          </Link>
-        </div>
-        
-        {/* Labels/Tags */}
-        {post.labels && post.labels.length > 0 && (
-          <div className="border-t border-gray-200 pt-6">
-            <div className="flex flex-wrap gap-2">
-              {post.labels.map((label) => (
-                <span 
-                  key={label}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors duration-200"
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+        </article>
+      </main>
     </>
   );
 };
