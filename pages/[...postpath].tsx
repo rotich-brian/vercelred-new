@@ -75,8 +75,9 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
     const requestedSlug = pathArr[0];
 
+    // Fetch the latest 50 posts
     const searchResponse = await fetch(
-      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}`
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}&maxResults=50`
     );
 
     if (!searchResponse.ok) {
@@ -84,7 +85,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     }
 
     const searchData = await searchResponse.json();
-    
+
+    // Find the post matching the requested slug
     const matchingPost = searchData.items.find((post: BloggerPost) => {
       const postSlug = extractSlugFromUrl(post.url);
       return postSlug === requestedSlug;
@@ -103,6 +105,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       };
     }
 
+    // Fetch detailed post data
     const postResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${matchingPost.id}?key=${apiKey}`
     );
@@ -159,7 +162,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       },
     };
   } catch (error) {
-    console.error("Error fetching post:", error);
+    console.error("Error fetching posts:", error);
     return { notFound: true };
   }
 };
