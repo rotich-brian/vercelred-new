@@ -272,7 +272,7 @@ const Post: React.FC<PostProps> = ({
         <link rel="canonical" href={canonicalUrl} />
 
         <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={excerpt} />
+        <meta property="og:description" content={post.title} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content="en_US" />
@@ -284,7 +284,7 @@ const Post: React.FC<PostProps> = ({
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
-        <meta name="twitter:description" content={excerpt} />
+        <meta name="twitter:description" content={post.title} />
         <meta name="twitter:image" content={thumbnail || ''} />
 
         <meta property="article:published_time" content={publishedDate} />
