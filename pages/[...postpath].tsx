@@ -215,9 +215,9 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
                 <Image 
                   src={post.author.image.url} 
                   alt={post.author.displayName}
-                  fill
+                  width={40}
+                  height={40}
                   className="rounded-full"
-                  sizes="40px"
                 />
               </div>
             )}
@@ -229,28 +229,31 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
         </header>
 
         {thumbnail && (
-          <Link href={post.url} target="_blank" rel="noopener noreferrer">
-            <div className="mb-8 relative aspect-video">
-              <Image
-                src={thumbnail}
-                alt={post.title}
-                fill
-                className="rounded-lg object-cover"
-                sizes="(max-width: 768px) 100vw, 1200px"
-                priority
-              />
-            </div>
+          <Link href={post.url}>
+            <a target="_blank" rel="noopener noreferrer" className="block mb-8">
+              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                <Image
+                  src={thumbnail}
+                  alt={post.title}
+                  layout="fill"
+                  objectFit="cover"
+                  className="rounded-lg"
+                  priority
+                />
+              </div>
+            </a>
           </Link>
         )}
 
         <div className="flex justify-center mt-8">
-          <Link 
-            href={post.url}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read Full Post
+          <Link href={post.url}>
+            <a 
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Read Full Post
+            </a>
           </Link>
         </div>
         
