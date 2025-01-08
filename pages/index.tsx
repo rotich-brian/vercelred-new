@@ -32,7 +32,7 @@ const Home: NextPage = () => {
           <p className={styles.heroSubtitle}>
             Join the best platform to stream live soccer matches and sports events worldwide. No interruptions, just action.
           </p>
-          <a href="#cta" className={styles.heroBtn}>Start Watching Now</a>
+          <a href="/signup" className={styles.heroBtn}>Start Watching Now</a>
         </div>
       </section>
 
