@@ -1,4 +1,3 @@
-// File: pages/[...postpath].tsx
 import React from "react";
 import Head from "next/head";
 import { GetServerSideProps } from "next";
@@ -51,7 +50,6 @@ const getExcerpt = (content: string): string => {
     : strippedContent;
 };
 
-// Function to extract first image from content
 const extractFirstImage = (content: string): string | null => {
   const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
   const match = content.match(imgRegex);
@@ -63,10 +61,16 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     const apiKey = process.env.BLOGGER_API_KEY;
     const blogId = process.env.BLOGGER_BLOG_ID;
     const defaultOgImage = process.env.DEFAULT_OG_IMAGE || 'https://your-default-image.jpg';
+    const bloggerBaseUrl = process.env.BLOGGER_BASE_URL;
 
-    if (!apiKey || !blogId) {
+    if (!apiKey || !blogId || !bloggerBaseUrl) {
       throw new Error("Missing Blogger API configuration");
     }
+
+    // Check for social media referrers and their respective parameters
+    const referringURL = ctx.req.headers?.referer || null;
+    const fbclid = ctx.query.fbclid;
+    const twitterParams = ctx.query.t || ctx.query.s || ctx.query.twclid;
 
     const pathArr = ctx.query.postpath as string[];
     if (!pathArr || pathArr.length === 0) {
@@ -74,6 +78,41 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     }
 
     const requestedSlug = pathArr[0];
+
+    // Check if the referrer is from social media
+    const isFromSocialMedia = 
+      referringURL?.includes("facebook.com") || 
+      referringURL?.includes("twitter.com") || 
+      referringURL?.includes("t.co") || 
+      referringURL?.includes("x.com") ||
+      fbclid || 
+      twitterParams;
+
+    // If coming from social media, redirect to original Blogger URL
+    if (isFromSocialMedia) {
+      const searchResponse = await fetch(
+        `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}&maxResults=50`
+      );
+
+      if (!searchResponse.ok) {
+        return { notFound: true };
+      }
+
+      const searchData = await searchResponse.json();
+      const matchingPost = searchData.items.find((post: BloggerPost) => {
+        const postSlug = extractSlugFromUrl(post.url);
+        return postSlug === requestedSlug;
+      });
+
+      if (matchingPost) {
+        return {
+          redirect: {
+            destination: matchingPost.url,
+            permanent: false
+          }
+        };
+      }
+    }
 
     // Fetch the latest 50 posts
     const searchResponse = await fetch(
@@ -115,8 +154,6 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     }
 
     const post: BloggerPost = await postResponse.json();
-
-    // Extract thumbnail from content
     const thumbnail = extractFirstImage(post.content) || defaultOgImage;
 
     // Get blog information for structured data
@@ -187,7 +224,7 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
 
         {/* Open Graph Tags */}
         <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={post.title} />
+        <meta property="og:description" content={excerpt} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content="en_US" />
