@@ -307,7 +307,7 @@ const Post: React.FC<PostProps> = ({
               <img 
                 src={post.author.image.url} 
                 alt={post.author.displayName}
-                className="w-10 h-10 rounded-full mr-3"
+                className="w-1 h-1 rounded-full mr-3"
               />
             )}
             <span className="mr-4">By {post.author.displayName}</span>
