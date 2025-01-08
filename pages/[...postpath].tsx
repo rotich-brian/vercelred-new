@@ -30,116 +30,71 @@ interface PostProps {
   path: string;
   structuredData: any;
   thumbnail: string | null;
-  debug?: any; // Added for debugging
 }
 
 const generateSlug = (title: string): string => {
-  const slug = title
+  return title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  console.log("Generated slug:", { originalTitle: title, slug });
-  return slug;
 };
 
 const extractSlugFromUrl = (url: string): string => {
   const urlParts = url.split('/');
   const lastPart = urlParts[urlParts.length - 1];
-  const slug = generateSlug(lastPart.replace('.html', ''));
-  console.log("Extracted slug from URL:", { originalUrl: url, urlParts, lastPart, slug });
-  return slug;
+  return generateSlug(lastPart.replace('.html', ''));
 };
 
 const getExcerpt = (content: string): string => {
   const strippedContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  const excerpt = strippedContent.length > 160 
+  return strippedContent.length > 160 
     ? `${strippedContent.substring(0, 157)}...` 
     : strippedContent;
-  console.log("Generated excerpt length:", excerpt.length);
-  return excerpt;
 };
 
 const extractFirstImage = (content: string): string | null => {
   const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
   const match = content.match(imgRegex);
-  const imageUrl = match ? match[1] : null;
-  console.log("Extracted first image:", { found: !!imageUrl });
-  return imageUrl;
+  return match ? match[1] : null;
 };
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const debugInfo: any = {};
-  
   try {
     const apiKey = process.env.BLOGGER_API_KEY;
     const blogId = process.env.BLOGGER_BLOG_ID;
     const defaultOgImage = process.env.DEFAULT_OG_IMAGE || 'https://your-default-image.jpg';
-
-    debugInfo.environmentCheck = {
-      hasApiKey: !!apiKey,
-      hasBlogId: !!blogId,
-      hasDefaultOgImage: !!defaultOgImage
-    };
-
-    console.log("Environment check:", debugInfo.environmentCheck);
 
     if (!apiKey || !blogId) {
       throw new Error("Missing Blogger API configuration");
     }
 
     const pathArr = ctx.query.postpath as string[];
-    debugInfo.requestPath = pathArr;
-    console.log("Requested path:", pathArr);
-
     if (!pathArr || pathArr.length === 0) {
-      console.log("No path provided");
       return { notFound: true };
     }
 
     const requestedSlug = pathArr[0];
-    debugInfo.requestedSlug = requestedSlug;
-    console.log("Processing requested slug:", requestedSlug);
 
-    const searchUrl = `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}`;
-    debugInfo.searchUrl = searchUrl.replace(apiKey, '[REDACTED]');
-    
-    console.log("Fetching posts from Blogger API...");
-    const searchResponse = await fetch(searchUrl);
-    debugInfo.searchResponseStatus = searchResponse.status;
-    console.log("Search response status:", searchResponse.status);
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}`
+    );
 
     if (!searchResponse.ok) {
-      console.error("Failed to fetch posts:", searchResponse.status);
       return { notFound: true };
     }
 
     const searchData = await searchResponse.json();
-    debugInfo.totalPosts = searchData.items?.length || 0;
-    console.log("Total posts found:", debugInfo.totalPosts);
-
-    // Log all post URLs and their slugs for debugging
-    const allSlugs = searchData.items.map((post: BloggerPost) => ({
-      url: post.url,
-      slug: extractSlugFromUrl(post.url)
-    }));
-    console.log("All available slugs:", allSlugs);
     
     const matchingPost = searchData.items.find((post: BloggerPost) => {
       const postSlug = extractSlugFromUrl(post.url);
-      console.log("Comparing slugs:", { postSlug, requestedSlug, matches: postSlug === requestedSlug });
       return postSlug === requestedSlug;
     });
 
-    debugInfo.foundMatchingPost = !!matchingPost;
-    console.log("Matching post found:", debugInfo.foundMatchingPost);
-
     if (!matchingPost) {
-      console.log("No matching post found for slug:", requestedSlug);
       return { notFound: true };
     }
 
     if (pathArr.length > 1) {
-      console.log("Redirecting to canonical URL");
       return {
         redirect: {
           destination: `/${requestedSlug}`,
@@ -148,24 +103,20 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       };
     }
 
-    const postUrl = `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${matchingPost.id}?key=${apiKey}`;
-    debugInfo.postUrl = postUrl.replace(apiKey, '[REDACTED]');
-    
-    console.log("Fetching individual post data...");
-    const postResponse = await fetch(postUrl);
-    debugInfo.postResponseStatus = postResponse.status;
-    console.log("Post response status:", postResponse.status);
+    const postResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${matchingPost.id}?key=${apiKey}`
+    );
 
     if (!postResponse.ok) {
-      console.error("Failed to fetch post details:", postResponse.status);
       return { notFound: true };
     }
 
     const post: BloggerPost = await postResponse.json();
     const thumbnail = extractFirstImage(post.content) || defaultOgImage;
 
-    const blogUrl = `https://www.googleapis.com/blogger/v3/blogs/${blogId}?key=${apiKey}`;
-    const blogResponse = await fetch(blogUrl);
+    const blogResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}?key=${apiKey}`
+    );
     const blogData = await blogResponse.json();
 
     const structuredData = {
@@ -195,42 +146,23 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       }
     };
 
-    console.log("Successfully prepared post data");
     return {
       props: {
         post,
         host: ctx.req.headers.host || "",
         path: requestedSlug,
         structuredData,
-        thumbnail,
-        debug: debugInfo // Include debug info in props
+        thumbnail
       },
     };
   } catch (error) {
-    console.error("Error in getServerSideProps:", error);
-    debugInfo.error = {
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined
-    };
-    return { 
-      notFound: true,
-      props: {
-        debug: debugInfo // Include debug info even in error case
-      }
-    };
+    console.error("Error fetching post:", error);
+    return { notFound: true };
   }
 };
 
-const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail, debug }) => {
-  // Log debug info on client side
-  React.useEffect(() => {
-    if (debug) {
-      console.log("Page Debug Info:", debug);
-    }
-  }, [debug]);
-
+const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail }) => {
   if (!post || !host) {
-    console.error("Missing required props:", { hasPost: !!post, hasHost: !!host });
     return <div>Error loading post</div>;
   }
 
@@ -238,6 +170,9 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
   const excerpt = getExcerpt(post.content);
   const publishedDate = new Date(post.published).toISOString();
   const modifiedDate = new Date(post.updated).toISOString();
+
+  // Generate Blogger post URL using post ID
+  const bloggerPostUrl = `https://www.blogger.com/blog/post/${post.id}`;
 
   return (
     <>
@@ -275,11 +210,12 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
       </Head>
       
       <div className="post-container max-w-4xl mx-auto px-4 py-8">
+        {/* Post Title and Author Info */}
         <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-          <div className="flex items-center text-gray-600">
+          <h1 className="text-4xl font-bold mb-4 text-gray-900">{post.title}</h1>
+          <div className="flex flex-wrap items-center gap-4 text-gray-600">
             {post.author.image && (
-              <div className="relative w-10 h-10 mr-3">
+              <div className="relative w-10 h-10">
                 <Image 
                   src={post.author.image.url} 
                   alt={post.author.displayName}
@@ -289,39 +225,50 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
                 />
               </div>
             )}
-            <span className="mr-4">By {post.author.displayName}</span>
-            <time dateTime={publishedDate}>
-              {new Date(post.published).toLocaleDateString()}
-            </time>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-gray-900">{post.author.displayName}</span>
+              <span className="text-gray-400">•</span>
+              <time dateTime={publishedDate} className="text-gray-600">
+                {new Intl.DateTimeFormat('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }).format(new Date(post.published))}
+              </time>
+            </div>
           </div>
         </header>
 
+        {/* Featured Image linking to actual post */}
         {thumbnail && (
-          <Link href={post.url}>
-            <a target="_blank" rel="noopener noreferrer" className="block mb-8">
-              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                <Image
-                  src={thumbnail}
-                  alt={post.title}
-                  layout="fill"
-                  objectFit="cover"
-                  className="rounded-lg"
-                  priority
-                />
-              </div>
-            </a>
-          </Link>
+          <div className="mb-8 overflow-hidden rounded-xl shadow-lg">
+            <Link href={bloggerPostUrl}>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                  <Image
+                    src={thumbnail}
+                    alt={post.title}
+                    layout="fill"
+                    objectFit="cover"
+                    priority
+                    className="transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+              </a>
+            </Link>
+          </div>
         )}
 
-        <article 
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: post.content }}
-        />
+        {/* Post Excerpt */}
+        <div className="prose prose-lg max-w-none mb-8">
+          <p className="text-gray-700 leading-relaxed">{excerpt}</p>
+        </div>
 
-        <div className="flex justify-center mt-8">
-          <Link href={post.url}>
+        {/* Read More Button */}
+        <div className="flex justify-center mb-8">
+          <Link href={bloggerPostUrl}>
             <a 
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+              className="inline-flex items-center px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -330,29 +277,19 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
           </Link>
         </div>
         
+        {/* Labels/Tags */}
         {post.labels && post.labels.length > 0 && (
-          <div className="mt-8 pt-4 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-2">Labels</h2>
+          <div className="border-t border-gray-200 pt-6">
             <div className="flex flex-wrap gap-2">
               {post.labels.map((label) => (
                 <span 
                   key={label}
-                  className="px-3 py-1 bg-gray-100 rounded-full text-sm"
+                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors duration-200"
                 >
                   {label}
                 </span>
               ))}
             </div>
-          </div>
-        )}
-        
-        {/* Debug information in development */}
-        {process.env.NODE_ENV === 'development' && debug && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-            <h2 className="text-xl font-semibold mb-2">Debug Information</h2>
-            <pre className="whitespace-pre-wrap">
-              {JSON.stringify(debug, null, 2)}
-            </pre>
           </div>
         )}
       </div>
