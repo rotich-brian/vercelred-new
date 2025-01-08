@@ -66,7 +66,6 @@ const extractFirstImage = (content: string): string | null => {
 const detectSocialMediaCrawler = (userAgent: string): SocialMediaCrawler => {
   const userAgentLower = userAgent.toLowerCase();
   
-  // Facebook crawler detection
   if (
     userAgentLower.includes('facebookexternalhit') || 
     userAgentLower.includes('facebot')
@@ -74,7 +73,6 @@ const detectSocialMediaCrawler = (userAgent: string): SocialMediaCrawler => {
     return { isCrawler: true, platform: 'facebook' };
   }
   
-  // Twitter/X crawler detection
   if (
     userAgentLower.includes('twitterbot') || 
     userAgentLower.includes('twitterclient') ||
@@ -97,27 +95,27 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       throw new Error("Missing Blogger API configuration");
     }
 
-    // Get request headers and parameters
     const referringURL = ctx.req.headers?.referer || null;
     const userAgent = ctx.req.headers['user-agent'] || '';
     const fbclid = ctx.query.fbclid;
     const twitterParams = ctx.query.t || ctx.query.s || ctx.query.twclid;
 
-    // Log important debugging information
     console.log("User-Agent:", userAgent);
     console.log("Referring URL:", referringURL);
 
     const pathArr = ctx.query.postpath as string[];
     if (!pathArr || pathArr.length === 0) {
-      return { notFound: true };
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
     }
 
     const requestedSlug = pathArr[0];
-
-    // Detect if request is from a social media crawler
     const socialMediaCrawler = detectSocialMediaCrawler(userAgent);
     
-    // Check if the request is from social media
     const isFromSocialMedia = 
       referringURL?.includes("facebook.com") || 
       referringURL?.includes("twitter.com") || 
@@ -126,39 +124,18 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       fbclid || 
       twitterParams;
 
-    // Only redirect if it's not a crawler
-    if (!socialMediaCrawler.isCrawler && isFromSocialMedia) {
-      const searchResponse = await fetch(
-        `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}&maxResults=50`
-      );
-
-      if (!searchResponse.ok) {
-        return { notFound: true };
-      }
-
-      const searchData = await searchResponse.json();
-      const matchingPost = searchData.items.find((post: BloggerPost) => {
-        const postSlug = extractSlugFromUrl(post.url);
-        return postSlug === requestedSlug;
-      });
-
-      if (matchingPost) {
-        return {
-          redirect: {
-            destination: matchingPost.url,
-            permanent: false
-          }
-        };
-      }
-    }
-
-    // Fetch post data
+    // Fetch posts to find a match
     const searchResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}&maxResults=50`
     );
 
     if (!searchResponse.ok) {
-      return { notFound: true };
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
     }
 
     const searchData = await searchResponse.json();
@@ -167,8 +144,24 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       return postSlug === requestedSlug;
     });
 
+    // If no matching post is found, redirect to base URL
     if (!matchingPost) {
-      return { notFound: true };
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
+    }
+
+    // Handle social media redirects
+    if (!socialMediaCrawler.isCrawler && isFromSocialMedia) {
+      return {
+        redirect: {
+          destination: matchingPost.url,
+          permanent: false
+        }
+      };
     }
 
     if (pathArr.length > 1) {
@@ -185,7 +178,12 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     );
 
     if (!postResponse.ok) {
-      return { notFound: true };
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
     }
 
     const post: BloggerPost = await postResponse.json();
@@ -238,10 +236,16 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     };
   } catch (error) {
     console.error("Error fetching posts:", error);
-    return { notFound: true };
+    return {
+      redirect: {
+        destination: process.env.BLOGGER_BASE_URL || '/',
+        permanent: false
+      }
+    };
   }
 };
 
+// Post component remains the same
 const Post: React.FC<PostProps> = ({ 
   post, 
   host, 
@@ -263,14 +267,12 @@ const Post: React.FC<PostProps> = ({
   return (
     <>
       <Head>
-        {/* Basic Meta Tags */}
         <title>{post.title}</title>
         <meta name="description" content={excerpt} />
         <link rel="canonical" href={canonicalUrl} />
 
-        {/* Open Graph Tags */}
         <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={post.title} />
+        <meta property="og:description" content={excerpt} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content="en_US" />
@@ -280,20 +282,17 @@ const Post: React.FC<PostProps> = ({
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
 
-        {/* Twitter Card Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
-        <meta name="twitter:description" content={post.title} />
+        <meta name="twitter:description" content={excerpt} />
         <meta name="twitter:image" content={thumbnail || ''} />
 
-        {/* Article Tags */}
         <meta property="article:published_time" content={publishedDate} />
         <meta property="article:modified_time" content={modifiedDate} />
         {post.labels?.map(label => (
           <meta key={label} property="article:tag" content={label} />
         ))}
 
-        {/* Structured Data */}
         <script 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
