@@ -1,7 +1,8 @@
-// File: pages/[...postpath].tsx
 import React from "react";
 import Head from "next/head";
 import { GetServerSideProps } from "next";
+import Link from "next/link";
+import Image from "next/image";
 
 interface BloggerAuthor {
   id: string;
@@ -51,7 +52,6 @@ const getExcerpt = (content: string): string => {
     : strippedContent;
 };
 
-// Function to extract first image from content
 const extractFirstImage = (content: string): string | null => {
   const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
   const match = content.match(imgRegex);
@@ -112,11 +112,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     }
 
     const post: BloggerPost = await postResponse.json();
-
-    // Extract thumbnail from content
     const thumbnail = extractFirstImage(post.content) || defaultOgImage;
 
-    // Get blog information for structured data
     const blogResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}?key=${apiKey}`
     );
@@ -177,12 +174,10 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
   return (
     <>
       <Head>
-        {/* Basic Meta Tags */}
         <title>{post.title}</title>
         <meta name="description" content={excerpt} />
         <link rel="canonical" href={canonicalUrl} />
 
-        {/* Open Graph Tags */}
         <meta property="og:title" content={post.title} />
         <meta property="og:description" content={excerpt} />
         <meta property="og:url" content={canonicalUrl} />
@@ -194,20 +189,17 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
 
-        {/* Twitter Card Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
         <meta name="twitter:description" content={excerpt} />
         <meta name="twitter:image" content={thumbnail || ''} />
 
-        {/* Article Tags */}
         <meta property="article:published_time" content={publishedDate} />
         <meta property="article:modified_time" content={modifiedDate} />
         {post.labels?.map(label => (
           <meta key={label} property="article:tag" content={label} />
         ))}
 
-        {/* Structured Data */}
         <script 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -219,11 +211,15 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
           <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
           <div className="flex items-center text-gray-600">
             {post.author.image && (
-              <img 
-                src={post.author.image.url} 
-                alt={post.author.displayName}
-                className="w-10 h-10 rounded-full mr-3"
-              />
+              <div className="relative w-10 h-10 mr-3">
+                <Image 
+                  src={post.author.image.url} 
+                  alt={post.author.displayName}
+                  fill
+                  className="rounded-full"
+                  sizes="40px"
+                />
+              </div>
             )}
             <span className="mr-4">By {post.author.displayName}</span>
             <time dateTime={publishedDate}>
@@ -233,23 +229,31 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
         </header>
 
         {thumbnail && (
-          <div className="mb-8">
-            <img
-              src={thumbnail}
-              alt={post.title}
-              className="w-full h-auto rounded-lg"
-              loading="eager"
-              width="1200"
-              height="630"
-            />
-          </div>
+          <Link href={post.url} target="_blank" rel="noopener noreferrer">
+            <div className="mb-8 relative aspect-video">
+              <Image
+                src={thumbnail}
+                alt={post.title}
+                fill
+                className="rounded-lg object-cover"
+                sizes="(max-width: 768px) 100vw, 1200px"
+                priority
+              />
+            </div>
+          </Link>
         )}
-        
-        <article 
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: post.content }} 
-        />
 
+        <div className="flex justify-center mt-8">
+          <Link 
+            href={post.url}
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read Full Post
+          </Link>
+        </div>
+        
         {post.labels && post.labels.length > 0 && (
           <div className="mt-8 pt-4 border-t border-gray-200">
             <h2 className="text-xl font-semibold mb-2">Labels</h2>
