@@ -28,6 +28,13 @@ interface PostProps {
   path: string;
   structuredData: any;
   thumbnail: string | null;
+  isSocialMediaCrawler: boolean;
+  socialPlatform: 'facebook' | 'twitter' | null;
+}
+
+interface SocialMediaCrawler {
+  isCrawler: boolean;
+  platform: 'facebook' | 'twitter' | null;
 }
 
 const generateSlug = (title: string): string => {
@@ -56,6 +63,29 @@ const extractFirstImage = (content: string): string | null => {
   return match ? match[1] : null;
 };
 
+const detectSocialMediaCrawler = (userAgent: string): SocialMediaCrawler => {
+  const userAgentLower = userAgent.toLowerCase();
+  
+  // Facebook crawler detection
+  if (
+    userAgentLower.includes('facebookexternalhit') || 
+    userAgentLower.includes('facebot')
+  ) {
+    return { isCrawler: true, platform: 'facebook' };
+  }
+  
+  // Twitter/X crawler detection
+  if (
+    userAgentLower.includes('twitterbot') || 
+    userAgentLower.includes('twitterclient') ||
+    userAgentLower.includes('x-bot')
+  ) {
+    return { isCrawler: true, platform: 'twitter' };
+  }
+  
+  return { isCrawler: false, platform: null };
+};
+
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   try {
     const apiKey = process.env.BLOGGER_API_KEY;
@@ -67,10 +97,15 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       throw new Error("Missing Blogger API configuration");
     }
 
-    // Check for social media referrers and their respective parameters
+    // Get request headers and parameters
     const referringURL = ctx.req.headers?.referer || null;
+    const userAgent = ctx.req.headers['user-agent'] || '';
     const fbclid = ctx.query.fbclid;
     const twitterParams = ctx.query.t || ctx.query.s || ctx.query.twclid;
+
+    // Log important debugging information
+    console.log("User-Agent:", userAgent);
+    console.log("Referring URL:", referringURL);
 
     const pathArr = ctx.query.postpath as string[];
     if (!pathArr || pathArr.length === 0) {
@@ -79,7 +114,10 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
     const requestedSlug = pathArr[0];
 
-    // Check if the referrer is from social media
+    // Detect if request is from a social media crawler
+    const socialMediaCrawler = detectSocialMediaCrawler(userAgent);
+    
+    // Check if the request is from social media
     const isFromSocialMedia = 
       referringURL?.includes("facebook.com") || 
       referringURL?.includes("twitter.com") || 
@@ -88,8 +126,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       fbclid || 
       twitterParams;
 
-    // If coming from social media, redirect to original Blogger URL
-    if (isFromSocialMedia) {
+    // Only redirect if it's not a crawler
+    if (!socialMediaCrawler.isCrawler && isFromSocialMedia) {
       const searchResponse = await fetch(
         `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}&maxResults=50`
       );
@@ -114,7 +152,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       }
     }
 
-    // Fetch the latest 50 posts
+    // Fetch post data
     const searchResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}&maxResults=50`
     );
@@ -124,8 +162,6 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     }
 
     const searchData = await searchResponse.json();
-
-    // Find the post matching the requested slug
     const matchingPost = searchData.items.find((post: BloggerPost) => {
       const postSlug = extractSlugFromUrl(post.url);
       return postSlug === requestedSlug;
@@ -144,7 +180,6 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       };
     }
 
-    // Fetch detailed post data
     const postResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${matchingPost.id}?key=${apiKey}`
     );
@@ -156,7 +191,6 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     const post: BloggerPost = await postResponse.json();
     const thumbnail = extractFirstImage(post.content) || defaultOgImage;
 
-    // Get blog information for structured data
     const blogResponse = await fetch(
       `https://www.googleapis.com/blogger/v3/blogs/${blogId}?key=${apiKey}`
     );
@@ -186,7 +220,9 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       "mainEntityOfPage": {
         "@type": "WebPage",
         "@id": `https://${ctx.req.headers.host}/${requestedSlug}`
-      }
+      },
+      "isAccessibleForFree": "True",
+      "inLanguage": "en-US"
     };
 
     return {
@@ -195,7 +231,9 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
         host: ctx.req.headers.host || "",
         path: requestedSlug,
         structuredData,
-        thumbnail
+        thumbnail,
+        isSocialMediaCrawler: socialMediaCrawler.isCrawler,
+        socialPlatform: socialMediaCrawler.platform
       },
     };
   } catch (error) {
@@ -204,7 +242,15 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   }
 };
 
-const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail }) => {
+const Post: React.FC<PostProps> = ({ 
+  post, 
+  host, 
+  path, 
+  structuredData, 
+  thumbnail,
+  isSocialMediaCrawler,
+  socialPlatform 
+}) => {
   if (!post || !host) {
     return <div>Error loading post</div>;
   }
@@ -237,7 +283,7 @@ const Post: React.FC<PostProps> = ({ post, host, path, structuredData, thumbnail
         {/* Twitter Card Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
-        <meta name="twitter:description" content={excerpt} />
+        <meta name="twitter:description" content={post.title} />
         <meta name="twitter:image" content={thumbnail || ''} />
 
         {/* Article Tags */}
