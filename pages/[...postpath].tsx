@@ -321,7 +321,7 @@ const Post: React.FC<PostProps> = ({
         </header>
 
         {thumbnail && (
-          <div className="mb-8" onClick={() => window.location.href = post.url}>
+          <div style="cursor: pointer;" className="mb-8" onClick={() => window.location.href = post.url}>
             <img
               src={thumbnail}
               alt={post.title}
