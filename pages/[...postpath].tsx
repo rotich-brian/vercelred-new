@@ -63,6 +63,10 @@ const extractFirstImage = (content: string): string | null => {
   return match ? match[1] : null;
 };
 
+const removeIframes = (html: string): string => {
+  return html.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '');
+};
+
 const detectSocialMediaCrawler = (userAgent: string): SocialMediaCrawler => {
   const userAgentLower = userAgent.toLowerCase();
   
@@ -264,6 +268,8 @@ const Post: React.FC<PostProps> = ({
   const publishedDate = new Date(post.published).toISOString();
   const modifiedDate = new Date(post.updated).toISOString();
 
+  const sanitizedContent = removeIframes(post.content);
+
   return (
     <>
       <Head>
@@ -326,7 +332,7 @@ const Post: React.FC<PostProps> = ({
         
         <article 
           className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: post.content }} 
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }} 
         />
 
         {post.labels && post.labels.length > 0 && (
