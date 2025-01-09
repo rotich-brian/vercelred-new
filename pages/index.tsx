@@ -234,9 +234,9 @@ const Home: NextPage = () => {
         </div>
         <nav className="nav">
           <a href="#hero">Home</a>
-          <a href="#features">Features</a>
-          <a href="#matches">Live Matches</a>
-          <a href="#footer">Contact</a>
+          <a href="#features">Live Matches</a>
+          <a href="#matches">Telegram</a>
+          <a href="#footer">Our App</a>
         </nav>
       </header>
 
