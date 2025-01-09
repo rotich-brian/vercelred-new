@@ -62,10 +62,16 @@ const Home: NextPage = () => {
         class TimeHandler {
           DateTime: any;
           userTimeZone: string;
+          TIME_FORMAT: Intl.DateTimeFormatOptions;
 
           constructor() {
             this.DateTime = (window as any).luxon.DateTime;
             this.userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            this.TIME_FORMAT = { 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              hour12: false 
+            };
           }
 
           formatMatchTime(timestamp: number) {
