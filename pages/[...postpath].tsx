@@ -32,6 +32,227 @@ interface PostProps {
   socialPlatform: 'facebook' | 'twitter' | null;
 }
 
+interface SocialMediaCrawler {
+  isCrawler: boolean;
+  platform: 'facebook' | 'twitter' | null;
+}
+
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
+const extractSlugFromUrl = (url: string): string => {
+  const urlParts = url.split('/');
+  const lastPart = urlParts[urlParts.length - 1];
+  return generateSlug(lastPart.replace('.html', ''));
+};
+
+const getExcerpt = (content: string): string => {
+  const strippedContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return strippedContent.length > 160 
+    ? `${strippedContent.substring(0, 157)}...` 
+    : strippedContent;
+};
+
+const extractFirstImage = (content: string): string | null => {
+  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
+  const match = content.match(imgRegex);
+  return match ? match[1] : null;
+};
+
+const removeVideoContainers = (html: string): string => {
+  return html
+    .replace(/<div class="video-container-custom11">[\s\S]*?<\/div>/gi, '')
+    .replace(/<div class="button-container">[\s\S]*?<\/div>/gi, '')
+    .replace(/<script>[\s\S]*?function changeStream[\s\S]*?<\/script>/gi, '');
+};
+
+const detectSocialMediaCrawler = (userAgent: string): SocialMediaCrawler => {
+  const userAgentLower = userAgent.toLowerCase();
+  
+  if (
+    userAgentLower.includes('facebookexternalhit') || 
+    userAgentLower.includes('facebot')
+  ) {
+    return { isCrawler: true, platform: 'facebook' };
+  }
+  
+  if (
+    userAgentLower.includes('twitterbot') || 
+    userAgentLower.includes('twitterclient') ||
+    userAgentLower.includes('x-bot')
+  ) {
+    return { isCrawler: true, platform: 'twitter' };
+  }
+  
+  return { isCrawler: false, platform: null };
+};
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  try {
+    const apiKey = process.env.BLOGGER_API_KEY;
+    const blogId = process.env.BLOGGER_BLOG_ID;
+    const defaultOgImage = process.env.DEFAULT_OG_IMAGE || 'https://your-default-image.jpg';
+    const bloggerBaseUrl = process.env.BLOGGER_BASE_URL;
+
+    if (!apiKey || !blogId || !bloggerBaseUrl) {
+      throw new Error("Missing Blogger API configuration");
+    }
+
+    const referringURL = ctx.req.headers?.referer || null;
+    const userAgent = ctx.req.headers['user-agent'] || '';
+    const fbclid = ctx.query.fbclid;
+    const twitterParams = ctx.query.t || ctx.query.s || ctx.query.twclid;
+
+    console.log("User-Agent:", userAgent);
+    console.log("Referring URL:", referringURL);
+
+    const pathArr = ctx.query.postpath as string[];
+    if (!pathArr || pathArr.length === 0) {
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
+    }
+
+    const requestedSlug = pathArr[0];
+    const socialMediaCrawler = detectSocialMediaCrawler(userAgent);
+    
+    const isFromSocialMedia = 
+      referringURL?.includes("facebook.com") || 
+      referringURL?.includes("twitter.com") || 
+      referringURL?.includes("t.co") || 
+      referringURL?.includes("x.com") ||
+      fbclid || 
+      twitterParams;
+
+    // Fetch posts to find a match
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts?key=${apiKey}&maxResults=50`
+    );
+
+    if (!searchResponse.ok) {
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
+    }
+
+    const searchData = await searchResponse.json();
+    const matchingPost = searchData.items.find((post: BloggerPost) => {
+      const postSlug = extractSlugFromUrl(post.url);
+      return postSlug === requestedSlug;
+    });
+
+    // If no matching post is found, redirect to base URL
+    if (!matchingPost) {
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
+    }
+
+    // Handle social media redirects
+    if (!socialMediaCrawler.isCrawler && isFromSocialMedia) {
+      return {
+        redirect: {
+          destination: matchingPost.url,
+          permanent: false
+        }
+      };
+    }
+
+    if (pathArr.length > 1) {
+      return {
+        redirect: {
+          destination: `/${requestedSlug}`,
+          permanent: true,
+        },
+      };
+    }
+
+    const postResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}/posts/${matchingPost.id}?key=${apiKey}`
+    );
+
+    if (!postResponse.ok) {
+      return {
+        redirect: {
+          destination: bloggerBaseUrl,
+          permanent: false
+        }
+      };
+    }
+
+    const post: BloggerPost = await postResponse.json();
+    const thumbnail = extractFirstImage(post.content) || defaultOgImage;
+
+    const blogResponse = await fetch(
+      `https://www.googleapis.com/blogger/v3/blogs/${blogId}?key=${apiKey}`
+    );
+    const blogData = await blogResponse.json();
+
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": post.title,
+      "description": getExcerpt(post.content),
+      "image": thumbnail,
+      "datePublished": post.published,
+      "dateModified": post.updated,
+      "author": {
+        "@type": "Person",
+        "name": post.author.displayName,
+        "url": post.author.url
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": blogData.name,
+        "logo": {
+          "@type": "ImageObject",
+          "url": `https://${ctx.req.headers.host}/logo.png`
+        }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `https://${ctx.req.headers.host}/${requestedSlug}`
+      },
+      "isAccessibleForFree": "True",
+      "inLanguage": "en-US"
+    };
+
+    return {
+      props: {
+        post,
+        host: ctx.req.headers.host || "",
+        path: requestedSlug,
+        structuredData,
+        thumbnail,
+        isSocialMediaCrawler: socialMediaCrawler.isCrawler,
+        socialPlatform: socialMediaCrawler.platform
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    return {
+      redirect: {
+        destination: process.env.BLOGGER_BASE_URL || '/',
+        permanent: false
+      }
+    };
+  }
+};
+
+// Post component remains the same
 const Post: React.FC<PostProps> = ({ 
   post, 
   host, 
@@ -85,69 +306,13 @@ const Post: React.FC<PostProps> = ({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-
-        <style>
-          {`
-            .thumbnail-container {
-              position: relative;
-              cursor: pointer;
-              overflow: hidden;
-              border-radius: 0.5rem;
-            }
-
-            .play-button-overlay {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              width: 80px;
-              height: 80px;
-              background-color: rgba(0, 0, 0, 0.7);
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.3s ease;
-            }
-
-            .play-button-overlay::before {
-              content: '';
-              width: 0;
-              height: 0;
-              border-top: 20px solid transparent;
-              border-bottom: 20px solid transparent;
-              border-left: 30px solid white;
-              margin-left: 7px;
-            }
-
-            .thumbnail-container:hover .play-button-overlay {
-              background-color: rgba(0, 0, 0, 0.9);
-              transform: translate(-50%, -50%) scale(1.1);
-            }
-
-            .thumbnail-container::after {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: rgba(0, 0, 0, 0.2);
-              opacity: 0;
-              transition: opacity 0.3s ease;
-            }
-
-            .thumbnail-container:hover::after {
-              opacity: 1;
-            }
-          `}
-        </style>
       </Head>
       
       <div className="post-container max-w-4xl mx-auto px-4 py-8">
         <header className="mb-8">
           <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
           <div className="flex items-center text-gray-600">
+            
             <span className="mr-4">By {post.author.displayName}</span>
             <time dateTime={publishedDate}>
               {new Date(post.published).toLocaleDateString()}
@@ -157,20 +322,14 @@ const Post: React.FC<PostProps> = ({
 
         {thumbnail && (
           <div className="mb-8">
-            <div 
-              className="thumbnail-container"
-              onClick={() => window.location.href = post.url}
-            >
-              <img
-                src={thumbnail}
-                alt={post.title}
-                className="w-full h-auto"
-                loading="eager"
-                width="1200"
-                height="630"
-              />
-              <div className="play-button-overlay" />
-            </div>
+            <img
+              src={thumbnail}
+              alt={post.title}
+              className="w-full h-auto rounded-lg"
+              loading="eager"
+              width="1200"
+              height="630"
+            />
           </div>
         )}
         
@@ -197,20 +356,6 @@ const Post: React.FC<PostProps> = ({
       </div>
     </>
   );
-};
-
-const getExcerpt = (content: string): string => {
-  const strippedContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  return strippedContent.length > 160 
-    ? `${strippedContent.substring(0, 157)}...` 
-    : strippedContent;
-};
-
-const removeVideoContainers = (html: string): string => {
-  return html
-    .replace(/<div class="video-container-custom11">[\s\S]*?<\/div>/gi, '')
-    .replace(/<div class="button-container">[\s\S]*?<\/div>/gi, '')
-    .replace(/<script>[\s\S]*?function changeStream[\s\S]*?<\/script>/gi, '');
 };
 
 export default Post;
