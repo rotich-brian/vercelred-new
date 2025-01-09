@@ -285,7 +285,7 @@ const Home: NextPage = () => {
       </section>
 
       <footer id="footer" className="footer">
-        <p>&copy; 2025 SportsStream. All Rights Reserved.</p>
+        <p>&copy; 2025 FooTV by Dev K. All Rights Reserved.</p>
         <div>
           <a href="/privacy">Privacy Policy</a> |
           <a href="/terms">Terms of Service</a>
