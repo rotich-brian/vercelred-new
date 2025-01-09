@@ -7,8 +7,27 @@ const Home: NextPage = () => {
   return (
     <div className={styles.container}>
       <Head>
-        <title>Live Sports Streaming - Watch Football and More</title>
-        <meta name="description" content="Stream live sports events and watch soccer games in real-time." />
+        <meta data-n-head="ssr" charset="utf-8">
+        <title>Livesports808 - Live Sport Streams, Watch Football Live, NBA and More</title>
+        <meta name="description" content="Livesports808 is the comprehensive sports TV online, live sports 808, offering 100+ live schedules for football & basketball matches in over 10 languages. It connects to free live streaming score808 and sport808, score808 live, soccer 808, livescore, 808. It was also named livesports808, livesports." />
+
+        <meta data-n-head="ssr" name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
+        <meta data-n-head="ssr" name="theme-color" content="#032c63">
+        <meta data-n-head="ssr" name="apple-mobile-web-app-title" content="Livesports808">
+        <meta data-n-head="ssr" name="application-name" content="Livesports808">
+        <meta data-n-head="ssr" name="msapplication-TileColor" content="#03306b">
+
+        {/*Open Graph Meta */}
+        <meta data-n-head="ssr" name="og:title" content="Livesports808 - Live Sport Streams, Watch Football Live, NBA and More">
+        <meta data-n-head="ssr" name="og:description" content="Livesports808 is the comprehensive sports TV online, live sports 808, offering 100+ live schedules for football &amp; basketball matches in over 10 languages. It connects to free live streaming score808 and sport808, score808 live, soccer 808, livescore, 808. It was also named livesports808, livesports.">
+        <meta data-n-head="ssr" name="og:type" content="website">
+        <meta data-n-head="ssr" name="og:image" content="/android-chrome-512x512.png">
+        <meta data-n-head="ssr" name="og:image:width" content="512">
+        <meta data-n-head="ssr" name="og:image:height" content="512">
+
+        {/* Description and Keywords */}
+        <meta data-n-head="ssr" name="description" content="Livesports088 is the comprehensive sports TV online, live sports 808, offering 100+ live schedules for football &amp; basketball matches in over 10 languages. It connects to free live streaming score808 and sport808, score808 live, soccer 808, livescore, 808. It was also named livesports808, livesports.">
+        <meta data-n-head="ssr" name="keywords" content="Live Sport Streams,Football Live,Livesports808,Score808,score808pro,sports streaming free">
         
         <link rel="icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
