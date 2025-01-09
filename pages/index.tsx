@@ -225,6 +225,8 @@ const Home: NextPage = () => {
         <meta name="description" content="Livesports808 is the comprehensive sports TV online, live sports 808, offering 100+ live schedules for football & basketball matches in over 10 languages." />
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
         <meta name="theme-color" content="#032c63" />
+
+        <meta name="facebook-domain-verification" content="rxzaq92a06htqv3lyohbqkby0zynob" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
