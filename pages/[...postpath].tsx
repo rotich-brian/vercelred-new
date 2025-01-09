@@ -63,8 +63,11 @@ const extractFirstImage = (content: string): string | null => {
   return match ? match[1] : null;
 };
 
-const removeIframes = (html: string): string => {
-  return html.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '');
+const removeVideoContainers = (html: string): string => {
+  return html
+    .replace(/<div class="video-container-custom11">[\s\S]*?<\/div>/gi, '')
+    .replace(/<div class="button-container">[\s\S]*?<\/div>/gi, '')
+    .replace(/<script>[\s\S]*?function changeStream[\s\S]*?<\/script>/gi, '');
 };
 
 const detectSocialMediaCrawler = (userAgent: string): SocialMediaCrawler => {
@@ -268,7 +271,7 @@ const Post: React.FC<PostProps> = ({
   const publishedDate = new Date(post.published).toISOString();
   const modifiedDate = new Date(post.updated).toISOString();
 
-  const sanitizedContent = removeIframes(post.content);
+  const sanitizedContent = removeVideoContainers(post.content);
 
   return (
     <>
