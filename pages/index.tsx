@@ -230,7 +230,7 @@ const Home: NextPage = () => {
 
       <header className="header">
         <div className="logo">
-          <Image src="favicon-32x32.png" alt="SportsStream" width={50} height={50} priority />
+          <Image src="android-chrome-512x512.png" alt="SportsStream" width={50} height={50} priority />
         </div>
         <nav className="nav">
           <a href="#hero">Home</a>
