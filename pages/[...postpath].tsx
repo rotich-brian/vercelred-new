@@ -321,17 +321,46 @@ const Post: React.FC<PostProps> = ({
         </header>
 
         {thumbnail && (
-          <div style="cursor: pointer;" className="mb-8" onClick={() => window.location.href = post.url}>
-            <img
-              src={thumbnail}
-              alt={post.title}
-              className="w-full h-auto rounded-lg"
-              loading="eager"
-              width="1200"
-              height="630"
-            />
+        <div
+          style={{ cursor: 'pointer', position: 'relative', display: 'inline-block' }}
+          className="mb-8"
+          onClick={() => window.location.href = post.url}
+        >
+          <img
+            src={thumbnail}
+            alt={post.title}
+            className="w-full h-auto rounded-lg"
+            loading="eager"
+            width="1200"
+            height="630"
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              padding: '10px',
+              borderRadius: '50%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '40px',
+                color: 'white',
+                fontWeight: 'bold',
+              }}
+            >
+              &#9654; {/* Play icon */}
+            </span>
           </div>
-        )}
+        </div>
+      )}
+
         
         <article 
           className="prose prose-lg max-w-none"
