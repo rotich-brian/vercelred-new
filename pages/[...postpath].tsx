@@ -2,7 +2,35 @@ import React from "react";
 import Head from "next/head";
 import { GetServerSideProps } from "next";
 
-// ... (previous interfaces and helper functions remain the same)
+interface BloggerAuthor {
+  id: string;
+  displayName: string;
+  url?: string;
+  image?: {
+    url: string;
+  };
+}
+
+interface BloggerPost {
+  id: string;
+  title: string;
+  content: string;
+  published: string;
+  updated: string;
+  url: string;
+  author: BloggerAuthor;
+  labels?: string[];
+}
+
+interface PostProps {
+  post: BloggerPost;
+  host: string;
+  path: string;
+  structuredData: any;
+  thumbnail: string | null;
+  isSocialMediaCrawler: boolean;
+  socialPlatform: 'facebook' | 'twitter' | null;
+}
 
 const Post: React.FC<PostProps> = ({ 
   post, 
@@ -169,6 +197,20 @@ const Post: React.FC<PostProps> = ({
       </div>
     </>
   );
+};
+
+const getExcerpt = (content: string): string => {
+  const strippedContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return strippedContent.length > 160 
+    ? `${strippedContent.substring(0, 157)}...` 
+    : strippedContent;
+};
+
+const removeVideoContainers = (html: string): string => {
+  return html
+    .replace(/<div class="video-container-custom11">[\s\S]*?<\/div>/gi, '')
+    .replace(/<div class="button-container">[\s\S]*?<\/div>/gi, '')
+    .replace(/<script>[\s\S]*?function changeStream[\s\S]*?<\/script>/gi, '');
 };
 
 export default Post;
