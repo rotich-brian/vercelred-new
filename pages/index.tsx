@@ -114,32 +114,29 @@ const Home: NextPage = () => {
               const response = await fetch(this.config.DATA_SOURCE);
               const data = await response.json();
               
-              // Handle different possible response formats
               let matches: any[] = [];
               if (Array.isArray(data)) {
                 matches = data;
               } else if (data.matches && Array.isArray(data.matches)) {
                 matches = data.matches;
               } else if (typeof data === 'object') {
-                // If data is an object with date keys
-                matches = Object.values(data).flat().filter(Array.isArray);
+                matches = Object.values(data).flat();
               }
-
-              // Validate matches structure
+          
               matches = matches.filter(match => 
                 match && 
                 typeof match === 'object' && 
-                'startTime' in match &&
+                'time' in match &&
                 ('homeTeam' in match || 'team1' in match) &&
                 ('awayTeam' in match || 'team2' in match)
               );
-
+          
               if (matches.length === 0) {
                 this.showToast('No matches available at the moment.', 'error');
                 this.displayNoMatches();
                 return;
               }
-
+          
               this.displayMatches(matches);
             } catch (error) {
               console.error('Error fetching matches:', error);
@@ -147,6 +144,7 @@ const Home: NextPage = () => {
               this.displayNoMatches();
             }
           }
+
 
           private displayMatches(matches: any[]) {
             const container = document.querySelector('.matches-container');
