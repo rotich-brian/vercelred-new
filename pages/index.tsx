@@ -112,11 +112,39 @@ const Home: NextPage = () => {
           private async fetchAndDisplayMatches() {
             try {
               const response = await fetch(this.config.DATA_SOURCE);
-              const matches = await response.json();
+              const data = await response.json();
+              
+              // Handle different possible response formats
+              let matches: any[] = [];
+              if (Array.isArray(data)) {
+                matches = data;
+              } else if (data.matches && Array.isArray(data.matches)) {
+                matches = data.matches;
+              } else if (typeof data === 'object') {
+                // If data is an object with date keys
+                matches = Object.values(data).flat().filter(Array.isArray);
+              }
+
+              // Validate matches structure
+              matches = matches.filter(match => 
+                match && 
+                typeof match === 'object' && 
+                'startTime' in match &&
+                ('homeTeam' in match || 'team1' in match) &&
+                ('awayTeam' in match || 'team2' in match)
+              );
+
+              if (matches.length === 0) {
+                this.showToast('No matches available at the moment.', 'error');
+                this.displayNoMatches();
+                return;
+              }
+
               this.displayMatches(matches);
             } catch (error) {
               console.error('Error fetching matches:', error);
               this.showToast('Error loading matches. Please try again later.', 'error');
+              this.displayNoMatches();
             }
           }
 
@@ -124,22 +152,46 @@ const Home: NextPage = () => {
             const container = document.querySelector('.matches-container');
             if (!container) return;
 
+            if (matches.length === 0) {
+              this.displayNoMatches();
+              return;
+            }
+
             const matchesHtml = matches.map(match => this.createMatchElement(match)).join('');
             container.innerHTML = matchesHtml;
+          }
+
+          private displayNoMatches() {
+            const container = document.querySelector('.matches-container');
+            if (!container) return;
+
+            container.innerHTML = `
+              <div class="no-matches">
+                <p>No matches available at the moment.</p>
+                <p>Please check back later.</p>
+              </div>
+            `;
           }
 
           private createMatchElement(match: any) {
             const isLive = this.timeHandler.isLive(match.startTime);
             const timeString = this.timeHandler.formatMatchTime(match.startTime);
             
+            // Handle different possible team name properties
+            const homeTeam = match.homeTeam || match.team1 || 'TBA';
+            const awayTeam = match.awayTeam || match.team2 || 'TBA';
+            
             return `
               <div class="match-card ${isLive ? 'live' : ''}">
                 <div class="match-time">${timeString}</div>
                 <div class="teams">
-                  <div class="team home">${match.homeTeam}</div>
-                  <div class="team away">${match.awayTeam}</div>
+                  <div class="team home">${homeTeam}</div>
+                  <div class="team away">${awayTeam}</div>
                 </div>
-                <div class="match-status">${isLive ? 'LIVE' : 'Upcoming'}</div>
+                <div class="match-status">
+                  ${isLive ? '<span class="live-indicator">LIVE</span>' : 'Upcoming'}
+                </div>
+                ${match.league ? `<div class="league-name">${match.league}</div>` : ''}
               </div>
             `;
           }
@@ -521,6 +573,50 @@ const Home: NextPage = () => {
         .matches-section {
           padding: 2rem 0;
           background: #f8f9fa;
+        }
+
+
+        .no-matches {
+          text-align: center;
+          padding: 2rem;
+          background: #f8f9fa;
+          border-radius: 8px;
+          margin: 1rem 0;
+        }
+
+        .live-indicator {
+          display: inline-block;
+          padding: 0.25rem 0.5rem;
+          background: #dc3545;
+          color: white;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: bold;
+        }
+
+        .league-name {
+          font-size: 0.875rem;
+          color: #666;
+          margin-top: 0.5rem;
+        }
+
+        .match-card {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          background: white;
+          padding: 1rem;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          transition: transform 0.2s ease;
+        }
+
+        .match-card:hover {
+          transform: translateY(-2px);
+        }
+
+        .match-card.live {
+          border-left: 4px solid #dc3545;
         }
       `}</style>
     </div>
