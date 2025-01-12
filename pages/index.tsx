@@ -2,11 +2,56 @@ import type { NextPage } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
+
+// Bot detection function
+const isBot = (userAgent: string): boolean => {
+  const botPatterns = [
+    'googlebot',
+    'bingbot',
+    'yandexbot',
+    'duckduckbot',
+    'slurp',
+    'baiduspider',
+    'facebookexternalhit',
+    'twitterbot',
+    'rogerbot',
+    'linkedinbot',
+    'embedly',
+    'quora link preview',
+    'showyoubot',
+    'outbrain',
+    'pinterest',
+    'slackbot',
+    'vkShare',
+    'W3C_Validator',
+    'crawler',
+    'spider',
+    'bot'
+  ];
+  
+  const lowerUA = userAgent.toLowerCase();
+  return botPatterns.some(pattern => lowerUA.includes(pattern));
+};
 
 const Home: NextPage = () => {
   const widgetRef = useRef<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
+    // Check if we're in the browser and not a bot
+    if (typeof window !== 'undefined') {
+      const userAgent = navigator.userAgent;
+      
+      if (!isBot(userAgent)) {
+        const baseUrl = process.env.BLOGGER_BASE_URL;
+        if (baseUrl) {
+          window.location.href = baseUrl;
+          return; // Stop further execution for redirecting users
+        }
+      }
+    }
+
     // Load external scripts
     const loadScript = (src: string): Promise<void> => {
       return new Promise((resolve, reject) => {
@@ -145,7 +190,6 @@ const Home: NextPage = () => {
             }
           }
 
-
           private displayMatches(matches: any[]) {
             const container = document.querySelector('.matches-container');
             if (!container) return;
@@ -175,7 +219,6 @@ const Home: NextPage = () => {
             const isLive = this.timeHandler.isLive(match.startTime);
             const timeString = this.timeHandler.formatMatchTime(match.startTime);
             
-            // Handle different possible team name properties
             const homeTeam = match.homeTeam || match.team1 || 'TBA';
             const awayTeam = match.awayTeam || match.team2 || 'TBA';
             
@@ -265,7 +308,7 @@ const Home: NextPage = () => {
         widgetRef.current.cleanup();
       }
     };
-  }, []);
+  }, [router]);
 
   return (
     <div>
@@ -275,7 +318,6 @@ const Home: NextPage = () => {
         <meta name="description" content="Livesports808 is the comprehensive sports TV online, live sports 808, offering 100+ live schedules for football & basketball matches in over 10 languages." />
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
         <meta name="theme-color" content="#032c63" />
-
         <meta name="facebook-domain-verification" content="rxzaq92a06htqv3lyohbqkby0zynob" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -345,6 +387,7 @@ const Home: NextPage = () => {
       </footer>
 
       <style jsx global>{`
+        /* Your existing styles remain the same */
         .header {
           display: flex;
           justify-content: space-between;
@@ -572,7 +615,6 @@ const Home: NextPage = () => {
           padding: 2rem 0;
           background: #f8f9fa;
         }
-
 
         .no-matches {
           text-align: center;
