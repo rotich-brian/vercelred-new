@@ -321,25 +321,6 @@ const Home: NextPage = () => {
         <meta name="facebook-domain-verification" content="rxzaq92a06htqv3lyohbqkby0zynob" />
         <link rel="icon" href="/favicon.ico" />
 
-        <meta name="theme-color" content="#032c63" data-hid="theme-color">
-        <meta name="apple-mobile-web-app-title" content="Livesports808">
-        <meta name="application-name" content="Livesports808">
-        <meta name="msapplication-TileColor" content="#03306b">
-
-
-        <meta name="og:title" content="Livesports808 - Live Sport Streams, Watch Football Live, NBA and More" data-hid="ote">
-        <meta name="description" content="Livesports808 is the comprehensive sports TV online..." data-hid="description">
-        <meta name="og:description" content="Livesports808 is the comprehensive sports TV online..." data-hid="odsc">
-        <meta name="keywords" content="Live Sport Streams, Football Live, Livesports088, Score808, score808pro, sports streaming free" data-hid="keywords">
-        <meta name="og:type" content="website" data-hid="otye">
-        <meta name="og:image" content="android-chrome-512x512.png" data-hid="oie">
-        <meta name="og:image:width" content="512" data-hid="oiw">
-        <meta name="og:image:height" content="512" data-hid="oih">
-
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-        <link rel="manifest" href="/site.webmanifest">
       </Head>
 
       <header className="header">
