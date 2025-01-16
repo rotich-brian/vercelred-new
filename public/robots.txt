@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /private/
+Allow: /public/
+Sitemap: https://livesports808.top/sitemap.xml
+
