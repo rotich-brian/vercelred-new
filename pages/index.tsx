@@ -1,691 +1,490 @@
-import type { NextPage } from 'next';
+import { useState, useRef, useEffect, MouseEvent } from 'react';
+import { Star, Tv, Loader2 } from 'lucide-react';
 import Head from 'next/head';
-import Image from 'next/image';
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
 
-// Bot detection function
-const isBot = (userAgent: string): boolean => {
-  const botPatterns = [
-    'googlebot',
-    'bingbot',
-    'yandexbot',
-    'duckduckbot',
-    'slurp',
-    'baiduspider',
-    'facebookexternalhit',
-    'twitterbot',
-    'rogerbot',
-    'linkedinbot',
-    'embedly',
-    'quora link preview',
-    'showyoubot',
-    'outbrain',
-    'pinterest',
-    'slackbot',
-    'vkShare',
-    'W3C_Validator',
-    'crawler',
-    'spider',
-    'bot'
-  ];
+interface ToastProps {
+  message: string;
+  type: 'error' | 'success';
+  onClose: () => void;
+}
+
+interface Match {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  tournament: string;
+  status: 'Live' | 'Scheduled' | 'FT';
+  display: string;
+  time: Date;
+  eventUrl: string;
+}
+
+interface MatchStatus {
+  status: 'Live' | 'Scheduled' | 'FT';
+  display: string;
+}
+
+interface MatchesState {
+  live: Match[];
+  scheduled: Match[];
+  finished: Match[];
+}
+
+interface ApiResponse {
+  today: RawMatch[];
+}
+
+interface RawMatch {
+  homeTeam: string;
+  awayTeam: string;
+  competition: string;
+  time: string;
+  eventUrl: string;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => (
+  <div 
+    className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg text-white transition-opacity duration-300 
+    ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}
+  >
+    {message}
+  </div>
+);
+
+const HomePage: React.FC = () => {
+  const [selectedSport, setSelectedSport] = useState<'Football' | 'Basketball' | 'Others'>('Football');
+  const [language, setLanguage] = useState<string>('English');
+  const [matches, setMatches] = useState<MatchesState>({ live: [], scheduled: [], finished: [] });
+  const [liveGames, setLiveGames] = useState<Match[]>([]);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [startX, setStartX] = useState<number>(0);
+  const [scrollLeft, setScrollLeft] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
+  const showToast = (message: string, type: 'error' | 'success' = 'success'): void => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>): void => {
+    setIsDragging(true);
+    if (sliderRef.current) {
+      setStartX(e.pageX - sliderRef.current.offsetLeft);
+      setScrollLeft(sliderRef.current.scrollLeft);
+    }
+  };
+
+  const handleMouseUp = (): void => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = (): void => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>): void => {
+    if (!isDragging || !sliderRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - sliderRef.current.offsetLeft;
+    const walk = (x - startX) * 2;
+    sliderRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const formatMatchTime = (utcTime: string | Date): string => {
+    let localTime: Date;
   
-  const lowerUA = userAgent.toLowerCase();
-  return botPatterns.some(pattern => lowerUA.includes(pattern));
-};
+    // If utcTime is a Date object, convert it to local time
+    if (utcTime instanceof Date) {
+      localTime = new Date(utcTime.getTime() - utcTime.getTimezoneOffset() * 60000); // Convert to local time
+    } else if (typeof utcTime === "string") {
+      // If it's a string, replace space with 'T' and append 'Z' to treat it as UTC
+      const utcTimeISO = utcTime.replace(" ", "T") + "Z";
+      
+      // Parse the string as a Date object
+      localTime = new Date(utcTimeISO);
+      
+      // Check if the Date object is valid
+      if (isNaN(localTime.getTime())) {
+        console.error("Invalid date format:", utcTime);
+        return "Invalid time";
+      }
+    } else {
+      console.error("Expected a string or Date but received:", typeof utcTime);
+      return "Invalid time";
+    }
+  
+    // Format the local time to HH:MM in the user's local time zone
+    return localTime.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false, // Set to false for 24-hour format
+    });
+  };
+  
 
-const Home: NextPage = () => {
-  const widgetRef = useRef<any>(null);
-  const router = useRouter();
+  const getMatchStatus = (matchTime: string | Date): MatchStatus => {
+    const now = new Date();
+    const gameTime = new Date(matchTime);
+    const diffInMinutes = Math.floor((now.getTime() - gameTime.getTime()) / (1000 * 60)+1);
+
+    if (diffInMinutes < 0) {
+      return { status: 'Scheduled', display: formatMatchTime(matchTime) };
+    } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
+      // return { status: 'Live', display: `${diffInMinutes}'` };
+      return { status: 'Live', display: `Live` };
+
+    } else {
+      return { status: 'FT', display: 'FT' };
+    }
+  };
+
+  const fetchMatches = async (showLoading = false): Promise<void> => {
+    if (showLoading) setIsLoading(true);
+    try {
+      const response = await fetch('https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog1.json');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data: ApiResponse = await response.json();
+
+      const processedMatches: Match[] = data.today.map(match => ({
+        id: `${match.homeTeam}-${match.awayTeam}`.replace(/\s/g, ''),
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        tournament: match.competition,
+        ...getMatchStatus(match.time),
+        time: new Date(match.time),
+        eventUrl: match.eventUrl
+      }));
+
+      const sortedMatches = processedMatches.sort((a, b) => a.time.getTime() - b.time.getTime());
+      const live = sortedMatches.filter(m => m.status === 'Live');
+      const scheduled = sortedMatches.filter(m => m.status === 'Scheduled');
+      const finished = sortedMatches.filter(m => m.status === 'FT');
+
+      setLiveGames([...live, ...scheduled].slice(0, 10));
+      setMatches({ live, scheduled, finished });
+
+      if (!showLoading) {
+        showToast('Events refresh success');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      setError(errorMessage);
+      console.error('Error fetching events:', error);
+      if (!showLoading) {
+        showToast('Failed to update events', 'error');
+      }
+    } finally {
+      if (showLoading) setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Check if we're in the browser and not a bot
-    if (typeof window !== 'undefined') {
-      const userAgent = navigator.userAgent;
-      
-      if (!isBot(userAgent)) {
-        const baseUrl = process.env.BLOGGER_BASE_URL;
-        if (baseUrl) {
-          window.location.href = baseUrl;
-          return; // Stop further execution for redirecting users
-        }
-      }
-    }
+    fetchMatches(true);
 
-    // Load external scripts
-    const loadScript = (src: string): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-          resolve();
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => resolve();
-        script.onerror = () => reject();
-        document.head.appendChild(script);
-      });
-    };
+    const statusInterval = setInterval(() => {
+      setMatches(prev => ({
+        live: prev.live.map(match => ({ ...match, ...getMatchStatus(match.time) })),
+        scheduled: prev.scheduled.map(match => ({ ...match, ...getMatchStatus(match.time) })),
+        finished: prev.finished.map(match => ({ ...match, ...getMatchStatus(match.time) }))
+      }));
+    }, 60000);
 
-    // Load external styles
-    const loadStyle = (href: string): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`link[href="${href}"]`)) {
-          resolve();
-          return;
-        }
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = href;
-        link.onload = () => resolve();
-        link.onerror = () => reject();
-        document.head.appendChild(link);
-      });
-    };
-
-    const initWidget = async () => {
-      try {
-        await Promise.all([
-          loadStyle('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'),
-          loadStyle('https://cdnjs.cloudflare.com/ajax/libs/Swiper/8.4.7/swiper-bundle.min.css'),
-          loadScript('https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.3/luxon.min.js'),
-          loadScript('https://cdnjs.cloudflare.com/ajax/libs/Swiper/8.4.7/swiper-bundle.min.js')
-        ]);
-
-        // Initialize widget functionality
-        const CONFIG = {
-          DATA_SOURCE: 'https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog1.json',
-          REFRESH_INTERVAL: 300000,
-          LIVE_DURATION_HOURS: 2,
-          TIME_FORMAT: { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: false 
-          }
-        };
-
-        class TimeHandler {
-          DateTime: any;
-          userTimeZone: string;
-          TIME_FORMAT: Intl.DateTimeFormatOptions;
-
-          constructor() {
-            this.DateTime = (window as any).luxon.DateTime;
-            this.userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            this.TIME_FORMAT = { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              hour12: false 
-            };
-          }
-
-          formatMatchTime(timestamp: number) {
-            const matchTime = this.DateTime.fromMillis(timestamp)
-              .setZone(this.userTimeZone);
-            return matchTime.toLocaleString(this.TIME_FORMAT);
-          }
-
-          isLive(startTime: number) {
-            const now = this.DateTime.now();
-            const matchStart = this.DateTime.fromMillis(startTime);
-            const hoursSinceStart = now.diff(matchStart, 'hours').hours;
-            return hoursSinceStart >= 0 && hoursSinceStart <= CONFIG.LIVE_DURATION_HOURS;
-          }
-        }
-
-        class SportsWidget {
-          private config: typeof CONFIG;
-          private timeHandler: TimeHandler;
-          private refreshInterval: NodeJS.Timeout | null;
-          private statusCheckInterval: NodeJS.Timeout | null;
-          private swiper: any;
-
-          constructor(config: typeof CONFIG) {
-            this.config = config;
-            this.timeHandler = new TimeHandler();
-            this.refreshInterval = null;
-            this.statusCheckInterval = null;
-            this.swiper = null;
-          }
-
-          async initialize() {
-            await this.fetchAndDisplayMatches();
-            this.initializeSwiper();
-            this.startRefreshInterval();
-          }
-
-          private async fetchAndDisplayMatches() {
-            try {
-              const response = await fetch(this.config.DATA_SOURCE);
-              const data = await response.json();
-              
-              let matches: any[] = [];
-              if (Array.isArray(data)) {
-                matches = data;
-              } else if (data.matches && Array.isArray(data.matches)) {
-                matches = data.matches;
-              } else if (typeof data === 'object') {
-                matches = Object.values(data).flat();
-              }
-          
-              matches = matches.filter(match => 
-                match && 
-                typeof match === 'object' && 
-                'time' in match &&
-                ('homeTeam' in match || 'team1' in match) &&
-                ('awayTeam' in match || 'team2' in match)
-              );
-          
-              if (matches.length === 0) {
-                this.showToast('No matches available at the moment.', 'error');
-                this.displayNoMatches();
-                return;
-              }
-          
-              this.displayMatches(matches);
-            } catch (error) {
-              console.error('Error fetching matches:', error);
-              this.showToast('Error loading matches. Please try again later.', 'error');
-              this.displayNoMatches();
-            }
-          }
-
-          private displayMatches(matches: any[]) {
-            const container = document.querySelector('.matches-container');
-            if (!container) return;
-
-            if (matches.length === 0) {
-              this.displayNoMatches();
-              return;
-            }
-
-            const matchesHtml = matches.map(match => this.createMatchElement(match)).join('');
-            container.innerHTML = matchesHtml;
-          }
-
-          private displayNoMatches() {
-            const container = document.querySelector('.matches-container');
-            if (!container) return;
-
-            container.innerHTML = `
-              <div class="no-matches">
-                <p>No matches available at the moment.</p>
-                <p>Please check back later.</p>
-              </div>
-            `;
-          }
-
-          private createMatchElement(match: any) {
-            const isLive = this.timeHandler.isLive(match.startTime);
-            const timeString = this.timeHandler.formatMatchTime(match.startTime);
-            
-            const homeTeam = match.homeTeam || match.team1 || 'TBA';
-            const awayTeam = match.awayTeam || match.team2 || 'TBA';
-            
-            return `
-              <div class="match-card ${isLive ? 'live' : ''}">
-                <div class="match-time">${timeString}</div>
-                <div class="teams">
-                  <div class="team home">${homeTeam}</div>
-                  <div class="team away">${awayTeam}</div>
-                </div>
-                <div class="match-status">
-                  ${isLive ? '<span class="live-indicator">LIVE</span>' : 'Upcoming'}
-                </div>
-                ${match.league ? `<div class="league-name">${match.league}</div>` : ''}
-              </div>
-            `;
-          }
-
-          private initializeSwiper() {
-            this.swiper = new (window as any).Swiper('.featured-matches-swiper', {
-              slidesPerView: 'auto',
-              spaceBetween: 20,
-              navigation: {
-                nextEl: '.swiper-button-next',
-                prevEl: '.swiper-button-prev',
-              }
-            });
-          }
-
-          private startRefreshInterval() {
-            this.refreshInterval = setInterval(() => {
-              this.fetchAndDisplayMatches();
-            }, this.config.REFRESH_INTERVAL);
-
-            this.statusCheckInterval = setInterval(() => {
-              this.updateMatchStatuses();
-            }, 60000);
-          }
-
-          private updateMatchStatuses() {
-            document.querySelectorAll('.match-card').forEach((card: Element) => {
-              const timeString = card.querySelector('.match-time')?.textContent;
-              if (timeString) {
-                const timestamp = this.timeHandler.DateTime.fromFormat(timeString, 'HH:mm').toMillis();
-                const isLive = this.timeHandler.isLive(timestamp);
-                card.classList.toggle('live', isLive);
-                const statusEl = card.querySelector('.match-status');
-                if (statusEl) {
-                  statusEl.textContent = isLive ? 'LIVE' : 'Upcoming';
-                }
-              }
-            });
-          }
-
-          private showToast(message: string, type: 'success' | 'error') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            
-            const container = document.getElementById('toast-container');
-            if (container) {
-              container.appendChild(toast);
-              setTimeout(() => toast.remove(), 3000);
-            }
-          }
-
-          cleanup() {
-            if (this.refreshInterval) clearInterval(this.refreshInterval);
-            if (this.statusCheckInterval) clearInterval(this.statusCheckInterval);
-            if (this.swiper) this.swiper.destroy();
-          }
-        }
-
-        if (!widgetRef.current) {
-          widgetRef.current = new SportsWidget(CONFIG);
-          await widgetRef.current.initialize();
-        }
-      } catch (error) {
-        console.error('Error initializing widget:', error);
-      }
-    };
-
-    initWidget();
+    const refreshInterval = setInterval(() => {
+      fetchMatches(false);
+    }, 300000);
 
     return () => {
-      if (widgetRef.current?.cleanup) {
-        widgetRef.current.cleanup();
-      }
+      clearInterval(statusInterval);
+      clearInterval(refreshInterval);
     };
-  }, [router]);
+  }, []);
+
+  const sports = [
+    { name: 'Football' as const, icon: '⚽' },
+    { name: 'Basketball' as const, icon: '🏀' },
+    { name: 'Others' as const, icon: '•••' }
+  ];
+
+  const languages = [
+    'English', 'Africa', 'Español', 'Indonesia', 'Português',
+    'Русский', 'Việt Nam', 'ไทย', '中文', '日本語', '한국어'
+  ] as const;
 
   return (
-    <div>
-      <Head>
-          <meta charSet="utf-8" />
-          <title>Livesports808 - Live Sport Streams, Watch Football Live, NBA and More</title>
-          <meta name="description" content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages." />
-          <meta name="keywords" content="Live Sport Streams, Football Live, Livesports808, Score808, sports streaming free" />
-          <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=1" />
-          <meta name="theme-color" content="#032c63" />
-          <meta name="apple-mobile-web-app-title" content="Livesports808" />
-          <meta name="application-name" content="Livesports808" />
-          <meta name="msapplication-TileColor" content="#03306b" />
-          <meta name="facebook-domain-verification" content="rxzaq92a06htqv3lyohbqkby0zynob" />
-      
-          <!-- Open Graph Metadata -->
-          <meta property="og:title" content="Livesports808 - Live Sport Streams, Watch Football Live, NBA and More" />
-          <meta property="og:description" content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages." />
-          <meta property="og:type" content="website" />
-          <meta property="og:image" content="/android-chrome-512x512.png" />
-          <meta property="og:image:width" content="512" />
-          <meta property="og:image:height" content="512" />
-          <meta property="og:url" content="https://www.livesports808.com" />
-          <meta property="og:site_name" content="Livesports808" />
-      
-          <!-- Favicons and Icons -->
-          <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-          <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-          <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-          <link rel="manifest" href="/site.webmanifest">
-      
-          <!-- Twitter Card Metadata -->
-          <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content="Livesports808 - Live Sport Streams, Watch Football Live, NBA and More" />
-          <meta name="twitter:description" content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages." />
-          <meta name="twitter:image" content="/android-chrome-512x512.png" />
-      </Head>
+    <div className="min-h-screen bg-gray-50">
+        <Head>
+            <meta charSet="utf-8" />
+            <title>Livesports808 - Live Sport Streams, Watch Football Live, NBA and More</title>
+            <meta
+            name="description"
+            content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages."
+            />
+            <meta
+            name="keywords"
+            content="Live Sport Streams, Football Live, Livesports808, Score808, sports streaming free"
+            />
+            <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=1" />
+            <meta name="theme-color" content="#032c63" />
+            <meta name="apple-mobile-web-app-title" content="Livesports808" />
+            <meta name="application-name" content="Livesports808" />
+            <meta name="msapplication-TileColor" content="#03306b" />
+            <meta
+            name="facebook-domain-verification"
+            content="rxzaq92a06htqv3lyohbqkby0zynob"
+            />
+            
+            {/* Open Graph Metadata */}
+            <meta
+            property="og:title"
+            content="Livesports808 - Live Sport Streams, Watch Football Live, NBA and More"
+            />
+            <meta
+            property="og:description"
+            content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages."
+            />
+            <meta property="og:type" content="website" />
+            <meta property="og:image" content="/android-chrome-512x512.png" />
+            <meta property="og:image:width" content="512" />
+            <meta property="og:image:height" content="512" />
+            <meta property="og:url" content="https://www.livesports808.com" />
+            <meta property="og:site_name" content="Livesports808" />
+            
+            {/* Favicons and Icons */}
+            <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+            <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+            <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+            <link rel="manifest" href="/site.webmanifest" />
+            
+            {/* Twitter Card Metadata */}
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta
+            name="twitter:title"
+            content="Livesports808 - Live Sport Streams, Watch Football Live, NBA and More"
+            />
+            <meta
+            name="twitter:description"
+            content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages."
+            />
+            <meta name="twitter:image" content="/android-chrome-512x512.png" />
+        </Head>
 
-      <header className="header">
-        <div className="logo">
-          <Image src="android-chrome-512x512.png" alt="SportsStream" width={50} height={50} priority />
-        </div>
-        <nav className="nav">
-          <a href="#hero">Home</a>
-          <a href="#features">Live Matches</a>
-          <a href="#matches">Telegram</a>
-          <a href="#footer">Our App</a>
-        </nav>
-      </header>
-
-      <section id="hero" className="hero">
-        <div className="heroContent">
-          <h1 className="heroTitle">Watch Football Live Anywhere</h1>
-          <p className="heroSubtitle">
-            Join the best platform to stream live soccer matches and sports events worldwide.
-          </p>
-          <a href="/signup" className="heroBtn">Start Watching Now</a>
-        </div>
-      </section>
-
-      <section id="matches" className="matches-section">
-        <div className="sports-widget-container">
-          <div className="sports-widget">
-            <div className="swiper featured-matches-swiper">
-              <div className="swiper-wrapper"></div>
-              <div className="swiper-button-next"></div>
-              <div className="swiper-button-prev"></div>
-            </div>
-            <div className="matches-container">
-              <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <div>Loading matches...</div>
+      <div className="max-w-[750px] mx-auto">
+        {/* Header Section */}
+        <div className="sticky top-0 z-10 ">
+          <div className="max-w-[750px] bg-[#002157] mx-auto">
+            <header className="px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-white text-lg">Live sports</h1>
+                  <div className="relative">
+                    <select 
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="bg-transparent text-white text-sm pl-2 pr-6 py-1 rounded border border-white/20 hover:border-white/40 transition-colors cursor-pointer appearance-none"
+                    >
+                      {languages.map((lang) => (
+                        <option key={lang} value={lang} className="text-gray-900">
+                          {lang}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <span className="text-white text-xs">▼</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button className="text-white">
+                    <span className="sr-only">Messages</span>
+                    💬
+                  </button>
+                  <button className="text-white">
+                    <span className="sr-only">Settings</span>
+                    ⚙️
+                  </button>
+                  <button className="text-white">
+                    <span className="sr-only">Profile</span>
+                    👤
+                  </button>
+                </div>
               </div>
-            </div>
-            <div id="toast-container" className="toast-container"></div>
+            </header>
+          </div>
+
+          <div className="max-w-[750px] bg-white mx-auto">
+            <nav>
+              <div className="flex justify-center px-4 py-2 space-x-6">  {/* Added space-x-4 */}
+                {sports.map((sport) => (
+                  <button
+                    key={sport.name}
+                    onClick={() => setSelectedSport(sport.name)}
+                    className={`flex items-center gap-2 px-4 py-2 ${
+                      selectedSport === sport.name ? 'text-[#002157] border-b-2 border-[#002157]' : 'text-gray-600'
+                    }`}
+                  >
+                    <span>{sport.icon}</span>
+                    <span>{sport.name}</span>
+                  </button>
+                ))}
+              </div>
+            </nav>
           </div>
         </div>
-      </section>
+      
 
-      <section id="features" className="features">
-        <div className="featuresContent">
-          <h2>Why Choose Us?</h2>
-          <p>
-            We provide high-quality, uninterrupted live streaming of your favorite sports.
-          </p>
-          <ul>
-            <li>⚽ Live Football Streaming</li>
-            <li>📱 Watch on Any Device</li>
-            <li>🌍 Global Coverage of Major Leagues</li>
-            <li>🔒 Secure and Reliable Service</li>
-          </ul>
-        </div>
-      </section>
+        {/* Main Content */}
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+          </div>
+        ) : error ? (
+          <div className="text-red-600 text-center py-8">{error}</div>
+        ) : (
+          <div className="max-w-[750px] mx-auto">
+            <main className="px-4 py-4">
+              {/* Live Games Slider */}
+              {liveGames.length > 0 && (
+                <div className="bg-blue-50/50 -mx-4 px-4 py-4 border-y border-blue-100/50 mb-4">
+                  <div 
+                    ref={sliderRef}
+                    className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onMouseMove={handleMouseMove}
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    <div className="flex gap-3 min-w-min pb-2">
+                      {liveGames.map((game) => (
+                        <div 
+                          key={game.id}
+                          className="bg-blue-50/50 rounded-lg p-3 hover:bg-gray-50 transition w-60 flex-shrink-0 shadow-sm border border-blue-100 min-h-[120px]"
+                          onClick={() => window.location.href = game.eventUrl }
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-600 text-xs">{game.tournament}</span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-900 text-white">
+                                {game.display}
+                              </span>
+                            </div>
+                            <Tv size={18} className="text-orange-600" />
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-gray-900 text-sm">{game.homeTeam}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-gray-900 text-sm">{game.awayTeam}</span>
+                              </div>
+                            </div>
+                            <button className="text-gray-400 hover:text-[#002157]">
+                              <Star size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
-      <footer id="footer" className="footer">
-        <p>&copy; 2025 FooTV by Dev K. All Rights Reserved.</p>
-        <div>
-          <a href="/privacy">Privacy Policy</a> |
-          <a href="/terms">Terms of Service</a>
-        </div>
-      </footer>
+              {/* Live and Scheduled Matches */}
+              <div className="space-y-[1px] bg-blue-100/30">
+                {[...matches.live, ...matches.scheduled].map((match) => (
+                  <div 
+                    key={match.id}
+                    className="bg-white p-3 hover:cursor-pointer"
+                    onClick={() => window.location.href = match.eventUrl}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-gray-600 text-sm block mb-2">{match.tournament}</span>
+                        <div className="flex gap-6">
+                          <button className="text-gray-400 hover:text-[#002157]">
+                            <Star size={18} />
+                          </button>
+                          
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            match.status === 'Live' ? 'text-red-500' : 'text-gray-500'
+                          } self-center`}>
+                            {match.display}
+                          </span>
 
-      <style jsx global>{`
-        /* Your existing styles remain the same */
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem 2rem;
-          background: #fff;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+                          <div className="space-y-2">
+                            <div className="text-gray-900">{match.homeTeam}</div>
+                            <div className="text-gray-900">{match.awayTeam}</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <span className={`flex items-center text-xs px-3 py-1 rounded-lg ${
+                          match.status === 'Live' ? 'bg-blue-900 text-white' : 'bg-gray-300 text-gray-500 bg-opacity-50'
+                        } self-center`}>
+                        <Tv className="mr-1" size={15} /> {/* Add the TV icon */}
+                        Live
+                      </span>
 
-        .nav {
-          display: flex;
-          gap: 2rem;
-        }
 
-        .nav a {
-          color: #333;
-          text-decoration: none;
-          font-weight: 500;
-        }
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-        .nav a:hover {
-          color: #0066cc;
-        }
+              {/* Finished Matches */}
+              {matches.finished.length > 0 && (
+                <div className="mt-6">
+                  <div className="text-sm text-gray-500 px-1 mb-2">Finished</div>
+                  <div className="space-y-[1px] bg-blue-100/30">
+                    {matches.finished.map((match) => (
+                      <div 
+                        key={match.id}
+                        className="bg-white p-3 hover:cursor-pointer"
+                        onClick={() => window.location.href = match.eventUrl}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-gray-600 text-sm block mb-2">{match.tournament}</span>
+                            <div className="flex gap-6">
+                              <button className="text-gray-400 hover:text-[#002157]">
+                                <Star size={18} />
+                              </button>
+                              <div className="space-y-2">
+                                <div className="text-gray-900">{match.homeTeam}</div>
+                                <div className="text-gray-900">{match.awayTeam}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-gray-500 font-medium text-sm self-center">
+                            {match.display}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </main>
+          </div>
+        )}
 
-        .hero {
-          text-align: center;
-          padding: 4rem 2rem;
-          background: linear-gradient(45deg, #032c63, #0066cc);
-          color: white;
-        }
-
-        .heroTitle {
-          font-size: 2.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .heroSubtitle {
-          font-size: 1.2rem;
-          margin-bottom: 2rem;
-        }
-
-        .heroBtn {
-          display: inline-block;
-          padding: 1rem 2rem;
-          background: #fff;
-          color: #0066cc;
-          text-decoration: none;
-          border-radius: 4px;
-          font-weight: bold;
-          transition: transform 0.2s;
-        }
-
-        .heroBtn:hover {
-          transform: translateY(-2px);
-        }
-
-        .features {
-          padding: 4rem 2rem;
-          background: #f8f9fa;
-        }
-
-        .featuresContent {
-          max-width: 800px;
-          margin: 0 auto;
-        }
-
-        .featuresContent h2 {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-
-        .featuresContent ul {
-          list-style: none;
-          padding: 0;
-        }
-
-        .featuresContent li {
-          margin: 1rem 0;
-          padding: 1rem;
-          background: white;
-          border-radius: 4px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .footer {
-          text-align: center;
-          padding: 2rem;
-          background: #032c63;
-          color: white;
-        }
-
-        .footer a {
-          color: white;
-          text-decoration: none;
-          margin: 0 1rem;
-        }
-
-        .sports-widget-container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 2rem;
-        }
-
-        .match-card {
-          padding: 1rem;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          margin-bottom: 1rem;
-          background: white;
-        }
-
-        .match-card.live {
-          border-color: #0066cc;
-        }
-
-        .match-time {
-          font-weight: bold;
-          color: #666;
-        }
-
-        .teams {
-          margin: 0.5rem 0;
-        }
-
-        .team {
-          padding: 0.25rem 0;
-        }
-
-        .match-status {
-          font-size: 0.875rem;
-          color: #0066cc;
-        }
-
-        .loading-container {
-          text-align: center;
-          padding: 2rem;
-        }
-
-        .loading-spinner {
-          border: 4px solid #f3f3f3;
-          border-top: 4px solid #0066cc;
-          border-radius: 50%;
-          width: 40px;
-          height: 40px;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        .toast-container {
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          z-index: 1000;
-        }
-
-        .toast {
-          padding: 1rem;
-          margin: 0.5rem;
-          border-radius: 4px;
-          color: white;
-          animation: fadeIn 0.3s ease-in;
-        }
-
-        .toast.success {
-          background: #28a745;
-        }
-
-        .toast.error {
-          background: #dc3545;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-width: 768px) {
-          .nav {
-            gap: 1rem;
-          }
-          
-          .heroTitle {
-            font-size: 2rem;
-          }
-          
-          .heroSubtitle {
-            font-size: 1rem;
-          }
-
-          .sports-widget-container {
-            padding: 1rem;
-          }
-
-          .match-card {
-            padding: 0.75rem;
-          }
-        }
-
-        .swiper {
-          width: 100%;
-          padding: 20px 0;
-        }
-
-        .swiper-slide {
-          width: auto;
-          max-width: 300px;
-        }
-
-        .swiper-button-next,
-        .swiper-button-prev {
-          color: #0066cc;
-        }
-
-        .swiper-button-next:after,
-        .swiper-button-prev:after {
-          font-size: 1.5rem;
-        }
-
-        .matches-section {
-          padding: 2rem 0;
-          background: #f8f9fa;
-        }
-
-        .no-matches {
-          text-align: center;
-          padding: 2rem;
-          background: #f8f9fa;
-          border-radius: 8px;
-          margin: 1rem 0;
-        }
-
-        .live-indicator {
-          display: inline-block;
-          padding: 0.25rem 0.5rem;
-          background: #dc3545;
-          color: white;
-          border-radius: 4px;
-          font-size: 0.75rem;
-          font-weight: bold;
-        }
-
-        .league-name {
-          font-size: 0.875rem;
-          color: #666;
-          margin-top: 0.5rem;
-        }
-
-        .match-card {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          background: white;
-          padding: 1rem;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          transition: transform 0.2s ease;
-        }
-
-        .match-card:hover {
-          transform: translateY(-2px);
-        }
-
-        .match-card.live {
-          border-left: 4px solid #dc3545;
-        }
-      `}</style>
+        {/* Toast */}
+        {toast && (
+          <Toast 
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+      </div>
     </div>
   );
 };
 
-export default Home;
+export default HomePage;
