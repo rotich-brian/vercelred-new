@@ -123,11 +123,42 @@ const HomePage: React.FC = () => {
       hour12: false, // Set to false for 24-hour format
     });
   };
+
+  const formatStatusTime = (utcTime: string | Date): Date => {
+    let localTime: Date;
+  
+    // If utcTime is a Date object, convert it to local time
+    if (utcTime instanceof Date) {
+      localTime = new Date(utcTime.getTime() - utcTime.getTimezoneOffset() * 60000); // Convert to local time
+    } else if (typeof utcTime === "string") {
+      // If it's a string, replace space with 'T' and append 'Z' to treat it as UTC
+      const utcTimeISO = utcTime.replace(" ", "T") + "Z";
+      
+      // Parse the string as a Date object
+      localTime = new Date(utcTimeISO);
+      
+      // Check if the Date object is valid
+      if (isNaN(localTime.getTime())) {
+        console.error("Invalid date format:", utcTime);
+        return localTime;
+      }
+    } else {
+      console.error("Expected a string or Date but received:", typeof utcTime);
+      return new Date;
+    }
+  
+    // Format the local time to HH:MM in the user's local time zone
+    return localTime;
+  };
   
 
   const getMatchStatus = (matchTime: string | Date): MatchStatus => {
+
+    let statusTime: Date;
+    statusTime = formatStatusTime(matchTime)
+
     const now = new Date();
-    const gameTime = new Date(matchTime);
+    const gameTime = new Date(statusTime);
     const diffInMinutes = Math.floor((now.getTime() - gameTime.getTime()) / (1000 * 60)+1);
 
     if (diffInMinutes < 0) {
