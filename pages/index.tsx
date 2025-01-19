@@ -257,7 +257,7 @@ const HomePage: React.FC = () => {
             />
             <meta
             name="keywords"
-            content="Live Sport Streams, Football Live, Livesports808, Score808, sports streaming free"
+            content="Live Sport Streams, Football Live, Livesports088, Livesports808, Score808, sports streaming free"
             />
             <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=1" />
             <meta name="theme-color" content="#032c63" />
@@ -282,10 +282,11 @@ const HomePage: React.FC = () => {
             <meta property="og:image" content="/android-chrome-512x512.png" />
             <meta property="og:image:width" content="512" />
             <meta property="og:image:height" content="512" />
-            <meta property="og:url" content="https://www.livesports808.com" />
+            <meta property="og:url" content="https://www.livesports808.top" />
             <meta property="og:site_name" content="Livesports808" />
             
             {/* Favicons and Icons */}
+            <link rel="icon" href="/favicon.ico" />
             <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
             <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
             <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
