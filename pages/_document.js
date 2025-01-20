@@ -14,6 +14,8 @@ class MyDocument extends Document {
         <body>
           <Main />
           <NextScript />
+
+          <script type='text/javascript' src='//pl25596196.profitablecpmrate.com/33/44/7b/33447b828b53f96077881ee158b6b1a8.js'></script>
         </body>
       </Html>
     );
