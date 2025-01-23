@@ -3,19 +3,38 @@ import Document, { Html, Head, Main, NextScript } from 'next/document';
 class MyDocument extends Document {
   render() {
     return (
-      <Html>
+      <Html lang="en">
         <Head>
-          {/* Add the favicon link */}
+          {/* Favicon links */}
           <link rel="icon" href="/favicon.ico" />
-          {/* You can also add other icon sizes for various devices */}
           <link rel="icon" href="/favicon-32x32.png" sizes="32x32" />
           <link rel="icon" href="/favicon-16x16.png" sizes="16x16" />
+
+          {/* Google Analytics */}
+          <script
+            async
+            src="https://www.googletagmanager.com/gtag/js?id=G-GX8LVXESV4"
+          ></script>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-GX8LVXESV4');
+              `,
+            }}
+          />
+
+          {/* Profitable CPM Rate Script */}
+          <script
+            async
+            src="//pl25596196.profitablecpmrate.com/33/44/7b/33447b828b53f96077881ee158b6b1a8.js"
+          ></script>
         </Head>
         <body>
           <Main />
           <NextScript />
-
-          <script type='text/javascript' src='//pl25596196.profitablecpmrate.com/33/44/7b/33447b828b53f96077881ee158b6b1a8.js'></script>
         </body>
       </Html>
     );
@@ -23,4 +42,3 @@ class MyDocument extends Document {
 }
 
 export default MyDocument;
-
