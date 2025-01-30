@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "autoprefixer": "^10.4.20",
+    "axios": "^1.7.9",
     "graphql": "^16.6.0",
     "graphql-request": "^5.0.0",
     "lucide-react": "^0.471.1",

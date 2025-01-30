@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, MouseEvent } from 'react';
 import { Star, Tv, Loader2 } from 'lucide-react';
 import Head from 'next/head';
+import React from 'react';
 
 interface ToastProps {
   message: string;
@@ -17,6 +18,8 @@ interface Match {
   display: string;
   time: Date;
   eventUrl: string;
+  homeTeamLogo: string;
+  awayTeamLogo: string;
 }
 
 interface MatchStatus {
@@ -40,6 +43,8 @@ interface RawMatch {
   competition: string;
   time: string;
   eventUrl: string;
+  homeTeamLogo: string;
+  awayTeamLogo: string;
 }
 
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => (
@@ -188,7 +193,9 @@ const HomePage: React.FC = () => {
         tournament: match.competition,
         ...getMatchStatus(match.time),
         time: new Date(match.time),
-        eventUrl: match.eventUrl
+        eventUrl: match.eventUrl,
+        homeTeamLogo: match.homeTeamLogo,
+        awayTeamLogo: match.awayTeamLogo,
       }));
 
       const sortedMatches = processedMatches.sort((a, b) => a.time.getTime() - b.time.getTime());
@@ -212,6 +219,75 @@ const HomePage: React.FC = () => {
     } finally {
       if (showLoading) setIsLoading(false);
     }
+  };
+
+  interface FallbackLogoProps {
+    teamName: string;
+  }
+
+  const FallbackLogo: React.FC<FallbackLogoProps> = ({ teamName }) => {
+    return (
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="1"
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <circle 
+          cx="12" 
+          cy="12" 
+          r="10" 
+          stroke="#666"
+          strokeWidth="1" 
+        />
+        <text 
+          x="12" 
+          y="16" 
+          fontSize="11" 
+          textAnchor="middle" 
+          fill="#666"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          fontWeight="200"
+          letterSpacing="0.5"
+        >
+          {teamName.charAt(0).toUpperCase()}
+        </text>
+      </svg>
+    );
+  };
+  
+  interface TeamLogoProps {
+    logoUrl: string;
+    teamName: string;
+    className?: string;
+  }
+  
+  const TeamLogo: React.FC<TeamLogoProps> = ({ 
+    logoUrl, 
+    teamName,
+    className = "w-6 h-6 mr-2" // Default className
+  }) => {
+    const [hasError, setHasError] = React.useState<boolean>(false);
+    
+    const handleError = (): void => {
+      setHasError(true);
+    };
+  
+    return hasError ? (
+      <FallbackLogo teamName={teamName} />
+    ) : (
+      <img 
+        src={logoUrl} 
+        alt={`${teamName} logo`} 
+        className={className}
+        onError={handleError}
+      />
+    );
   };
 
   useEffect(() => {
@@ -408,14 +484,30 @@ const HomePage: React.FC = () => {
                             <Tv size={18} className="text-orange-600" />
                           </div>
                           <div className="flex justify-between items-center">
-                            <div className="space-y-2">
+
+                            {/* <div className="space-y-2">
                               <div className="flex items-center gap-3">
                                 <span className="text-gray-900 text-sm">{game.homeTeam}</span>
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="text-gray-900 text-sm">{game.awayTeam}</span>
                               </div>
+                            </div> */}
+
+                            <div className="space-y-2">
+                              {/* Home Team */}
+                              <div className="flex items-center text-gray-900">
+                                <TeamLogo logoUrl={game.homeTeamLogo} teamName={game.homeTeam} />
+                                <span className="text-gray-900 text-sm px-1">{game.homeTeam}</span>
+                              </div>
+
+                              {/* Away Team */}
+                              <div className="flex items-center text-gray-900">
+                                <TeamLogo logoUrl={game.awayTeamLogo} teamName={game.awayTeam} />
+                                <span className="text-gray-900 text-sm px-1">{game.awayTeam}</span>
+                              </div>
                             </div>
+
                             <button className="text-gray-400 hover:text-[#002157]">
                               <Star size={18} />
                             </button>
@@ -438,22 +530,31 @@ const HomePage: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-gray-600 text-sm block mb-2">{match.tournament}</span>
+
                         <div className="flex gap-6">
                           <button className="text-gray-400 hover:text-[#002157]">
                             <Star size={18} />
                           </button>
-                          
-                          <span className={`text-xs px-2 py-0.5 rounded ${
-                            match.status === 'Live' ? 'text-red-500' : 'text-gray-500'
-                          } self-center`}>
+
+                          <span className={`text-xs px-2 py-0.5 rounded ${match.status === 'Live' ? 'text-red-500' : 'text-gray-500'} self-center`}>
                             {match.display}
                           </span>
 
                           <div className="space-y-2">
-                            <div className="text-gray-900">{match.homeTeam}</div>
-                            <div className="text-gray-900">{match.awayTeam}</div>
+                            {/* Home Team */}
+                            <div className="flex items-center text-gray-900">
+                              <TeamLogo logoUrl={match.homeTeamLogo} teamName={match.homeTeam} />
+                              <span className='text-sm px-1'>{match.homeTeam}</span>
+                            </div>
+
+                            {/* Away Team */}
+                            <div className="flex items-center text-gray-900">
+                              <TeamLogo logoUrl={match.awayTeamLogo} teamName={match.awayTeam} />
+                              <span className='text-sm px-1'>{match.awayTeam}</span>
+                            </div>
                           </div>
                         </div>
+
                       </div>
                       
                       <span className={`flex items-center text-xs px-3 py-1 rounded-lg ${
@@ -488,8 +589,8 @@ const HomePage: React.FC = () => {
                                 <Star size={18} />
                               </button>
                               <div className="space-y-2">
-                                <div className="text-gray-900">{match.homeTeam}</div>
-                                <div className="text-gray-900">{match.awayTeam}</div>
+                                <div className="text-gray-900 text-sm px-1">{match.homeTeam}</div>
+                                <div className="text-gray-900 text-sm px-1">{match.awayTeam}</div>
                               </div>
                             </div>
                           </div>
