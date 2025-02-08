@@ -344,6 +344,10 @@ const HomePage: React.FC = () => {
             name="facebook-domain-verification"
             content="rxzaq92a06htqv3lyohbqkby0zynob"
             />
+            <meta 
+            name="monetag" 
+            content="5ec35a6074564ad0cb4ea605e79f3cc5"
+            />
             
             {/* Open Graph Metadata */}
             <meta
