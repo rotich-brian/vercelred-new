@@ -31,6 +31,13 @@ class MyDocument extends Document {
             async
             src="//pl25596196.profitablecpmrate.com/33/44/7b/33447b828b53f96077881ee158b6b1a8.js"
           ></script>
+
+          <script 
+              src="https://richinfo.co/richpartners/pops/js/richads-pu-ob.js" 
+                data-pubid="959538" 
+                  data-siteid="357373" 
+                    async data-cfasync="false">
+          </script>
         </Head>
         <body>
           <Main />
