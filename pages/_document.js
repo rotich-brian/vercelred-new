@@ -31,7 +31,6 @@ class MyDocument extends Document {
             async
             src="//pl25596196.profitablecpmrate.com/33/44/7b/33447b828b53f96077881ee158b6b1a8.js"
           ></script>
-          <meta name="monetag" content="5ec35a6074564ad0cb4ea605e79f3cc5">
         </Head>
         <body>
           <Main />
