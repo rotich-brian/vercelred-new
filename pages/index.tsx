@@ -603,7 +603,7 @@ const HomePage: React.FC = () => {
             <main className="px-4 py-4">
               {/* Large Ad Banner (728x90) above slider */}
               <div className="mb-4 -mx-4 flex justify-center">
-                <Ad type="leaderboard"/>
+                <Ad type="leaderboard" className='overflow-hidden'/>
               </div>
 
               {/* Live Games Slider */}
