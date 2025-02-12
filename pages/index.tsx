@@ -164,6 +164,75 @@ const Ad: React.FC<{ type: keyof typeof AD_CONFIGS, className?: string }> = ({ t
   );
 };
 
+// Ad Component Types and Implementation
+const AD_CONFIGS1 = {
+  rectangle: {
+    key: '4f89c623c272ffdc399782a0e443dc34',
+    width: 300,
+    height: 250
+  },
+  leaderboard: {
+    key: '107614155ac85467a976d2710434bc1b',
+    width: 728,
+    height: 90
+  },
+  banner: {
+    key: 'c16631c1e95d39875fa6084bcab7e9b6',
+    width: 468,
+    height: 60
+  }
+} as const;
+
+type AdType = keyof typeof AD_CONFIGS1;
+
+interface AdProps {
+  type: AdType;
+  className?: string;
+}
+
+const Ad2: React.FC<AdProps> = ({ type, className = "" }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const config = AD_CONFIGS1[type];
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    (window as any).atOptions = {
+      'key': config.key,
+      'format': 'iframe',
+      'height': config.height,
+      'width': config.width,
+      'params': {}
+    };
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = `//www.highperformanceformat.com/${config.key}/invoke.js`;
+    
+    containerRef.current.appendChild(script);
+
+    return () => {
+      if (containerRef.current) {
+        const scripts = containerRef.current.getElementsByTagName('script');
+        Array.from(scripts).forEach(script => script.remove());
+      }
+    };
+  }, [config.key, config.height, config.width]);
+
+  return (
+    <div 
+      ref={containerRef} 
+      className={className}
+      style={{ 
+        width: config.width, 
+        height: config.height,
+        overflow: 'hidden'
+      }}
+    />
+  );
+};
+
+
 // Toast Component
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => (
   <div 
@@ -534,8 +603,7 @@ const HomePage: React.FC = () => {
             <main className="px-4 py-4">
               {/* Large Ad Banner (728x90) above slider */}
               <div className="mb-4 -mx-4 flex justify-center">
-                <Ad type="leaderboard" className="hidden md:flex" />
-                <Ad type="rectangle" className="md:hidden" />
+                <Ad type="leaderboard"/>
               </div>
 
               {/* Live Games Slider */}
@@ -590,8 +658,7 @@ const HomePage: React.FC = () => {
 
               {/* Medium Ad Banner (468x60) below slider */}
               <div className="mb-4 -mx-4 flex justify-center">
-                <Ad type="banner" className="hidden sm:flex" />
-                <Ad type="rectangle" className="sm:hidden" />
+                {/* <Ad type="banner"  /> */}
               </div>
 
               {/* Live and Scheduled Matches */}
@@ -639,7 +706,7 @@ const HomePage: React.FC = () => {
 
               {/* Rectangle Ad Banner (300x250) between live and finished matches */}
               <div className="my-6 flex justify-center">
-                <Ad type="rectangle" />
+                {/* <Ad2 type="rectangle" /> */}
               </div>
 
               {/* Finished Matches */}
