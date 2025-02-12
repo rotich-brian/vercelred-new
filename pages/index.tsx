@@ -3,7 +3,75 @@ import { Star, Tv, Loader2 } from 'lucide-react';
 import Head from 'next/head';
 import React from 'react';
 
-// Types
+// Ad Component Types and Implementation
+const AD_CONFIGS = {
+  rectangle: {
+    key: '4f89c623c272ffdc399782a0e443dc34',
+    width: 300,
+    height: 250
+  },
+  leaderboard: {
+    key: '107614155ac85467a976d2710434bc1b',
+    width: 728,
+    height: 90
+  },
+  banner: {
+    key: 'c16631c1e95d39875fa6084bcab7e9b6',
+    width: 468,
+    height: 60
+  }
+} as const;
+
+type AdType = keyof typeof AD_CONFIGS;
+
+interface AdProps {
+  type: AdType;
+  className?: string;
+}
+
+const Ad: React.FC<AdProps> = ({ type, className = "" }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const config = AD_CONFIGS[type];
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    (window as any).atOptions = {
+      'key': config.key,
+      'format': 'iframe',
+      'height': config.height,
+      'width': config.width,
+      'params': {}
+    };
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = `//www.highperformanceformat.com/${config.key}/invoke.js`;
+    
+    containerRef.current.appendChild(script);
+
+    return () => {
+      if (containerRef.current) {
+        const scripts = containerRef.current.getElementsByTagName('script');
+        Array.from(scripts).forEach(script => script.remove());
+      }
+    };
+  }, [config.key, config.height, config.width]);
+
+  return (
+    <div 
+      ref={containerRef} 
+      className={className}
+      style={{ 
+        width: config.width, 
+        height: config.height,
+        overflow: 'hidden'
+      }}
+    />
+  );
+};
+
+// Existing Types
 interface ToastProps {
   message: string;
   type: 'error' | 'success';
@@ -47,122 +115,6 @@ interface RawMatch {
   homeTeamLogo: string;
   awayTeamLogo: string;
 }
-
-// Ad Components
-interface AdScriptProps {
-  adKey: string;
-  width: number;
-  height: number;
-  className?: string;
-}
-
-interface EffectiveAdProps {
-  containerId: string;
-  scriptSrc: string;
-  className?: string;
-}
-
-const EffectiveAd: React.FC<EffectiveAdProps> = ({ containerId, scriptSrc, className = "" }) => {
-  const adContainerRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.async = true;
-    script.setAttribute('data-cfasync', 'false');
-    script.src = scriptSrc;
-    
-    document.head.appendChild(script);
-
-    return () => {
-      script.remove();
-      if (adContainerRef.current) {
-        adContainerRef.current.innerHTML = '';
-      }
-    };
-  }, [scriptSrc]);
-
-  return (
-    <div id={containerId} ref={adContainerRef} className={className} />
-  );
-};
-
-const AdScript: React.FC<AdScriptProps> = ({ adKey, width, height, className = "" }) => {
-  const adContainerRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    const atOptions = {
-      'key': adKey,
-      'format': 'iframe',
-      'height': height,
-      'width': width,
-      'params': {}
-    };
-
-    (window as any).atOptions = atOptions;
-
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
-    
-    if (adContainerRef.current) {
-      adContainerRef.current.appendChild(script);
-    }
-
-    return () => {
-      if (adContainerRef.current) {
-        const scripts = adContainerRef.current.getElementsByTagName('script');
-        Array.from(scripts).forEach(script => script.remove());
-      }
-    };
-  }, [adKey, width, height]);
-
-  return (
-    <div ref={adContainerRef} className={className} />
-  );
-};
-
-const AD_CONFIGS = {
-  rectangle: {
-    type: 'effective' as const,
-    containerId: '96574d2701ebf1291000c6202c20a41f',
-    scriptSrc: '//pl19047361.effectiveratecpm.com/96574d2701ebf1291000c6202c20a41f/invoke.js'
-  },
-  leaderboard: {
-    type: 'standard' as const,
-    key: '107614155ac85467a976d2710434bc1b',
-    width: 728,
-    height: 90
-  },
-  banner: {
-    type: 'standard' as const,
-    key: 'c16631c1e95d39875fa6084bcab7e9b6',
-    width: 468,
-    height: 60
-  }
-};
-
-const Ad: React.FC<{ type: keyof typeof AD_CONFIGS, className?: string }> = ({ type, className = "" }) => {
-  const config = AD_CONFIGS[type];
-  
-  if (config.type === 'effective') {
-    return (
-      <EffectiveAd
-        containerId={config.containerId}
-        scriptSrc={config.scriptSrc}
-        className={className}
-      />
-    );
-  }
-
-  return (
-    <AdScript
-      adKey={config.key}
-      width={config.width}
-      height={config.height}
-      className={className}
-    />
-  );
-};
 
 // Toast Component
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => (
@@ -623,7 +575,6 @@ const HomePage: React.FC = () => {
                               <span className="text-sm px-1">{match.awayTeam}</span>
                             </div>
                           </div>
-
                         </div>
                       </div>
                       <span className={`flex items-center text-xs px-3 py-1 rounded-lg ${
@@ -671,7 +622,6 @@ const HomePage: React.FC = () => {
                                   <span className="text-sm px-1">{match.awayTeam}</span>
                                 </div>
                               </div>
-                              
                             </div>
                           </div>
                           <span className="text-gray-500 font-medium text-sm self-center">
