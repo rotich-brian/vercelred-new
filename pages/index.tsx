@@ -706,7 +706,7 @@ const HomePage: React.FC = () => {
 
               {/* Rectangle Ad Banner (300x250) between live and finished matches */}
               <div className="my-6 flex justify-center">
-                <Ad type="rectangle" />
+                <Ad2 type="rectangle" />
               </div>
 
               {/* Finished Matches */}
