@@ -603,7 +603,7 @@ const HomePage: React.FC = () => {
             <main className="px-4 py-4">
               {/* Large Ad Banner (728x90) above slider */}
               <div className="mb-4 -mx-4 flex justify-center">
-                <Ad type="leaderboard" className='overflow-hidden'/>
+                {/* <Ad type="leaderboard" className='overflow-hidden'/> */}
               </div>
 
               {/* Live Games Slider */}
@@ -706,7 +706,7 @@ const HomePage: React.FC = () => {
 
               {/* Rectangle Ad Banner (300x250) between live and finished matches */}
               <div className="my-6 flex justify-center">
-                {/* <Ad2 type="rectangle" /> */}
+                <Ad2 type="rectangle" />
               </div>
 
               {/* Finished Matches */}
