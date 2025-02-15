@@ -48,15 +48,28 @@ interface RawMatch {
   awayTeamLogo: string;
 }
 
-// Adsterra Native Banner Component
-const AdsterraNativeBanner: React.FC = () => {
+// Ad Components
+interface AdScriptProps {
+  adKey: string;
+  width: number;
+  height: number;
+  className?: string;
+}
+
+interface EffectiveAdProps {
+  containerId: string;
+  scriptSrc: string;
+  className?: string;
+}
+
+const EffectiveAd: React.FC<EffectiveAdProps> = ({ containerId, scriptSrc, className = "" }) => {
   const adContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     const script = document.createElement('script');
     script.async = true;
     script.setAttribute('data-cfasync', 'false');
-    script.src = '//pl25846014.effectiveratecpm.com/db1b505556897740c7475f57aa733c5e/invoke.js';
+    script.src = scriptSrc;
     
     document.head.appendChild(script);
 
@@ -66,12 +79,159 @@ const AdsterraNativeBanner: React.FC = () => {
         adContainerRef.current.innerHTML = '';
       }
     };
-  }, []);
+  }, [scriptSrc]);
 
   return (
-    <div id="container-db1b505556897740c7475f57aa733c5e" ref={adContainerRef} />
+    <div id={containerId} ref={adContainerRef} className={className} />
   );
 };
+
+const AdScript: React.FC<AdScriptProps> = ({ adKey, width, height, className = "" }) => {
+  const adContainerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const atOptions = {
+      'key': adKey,
+      'format': 'iframe',
+      'height': height,
+      'width': width,
+      'params': {}
+    };
+
+    (window as any).atOptions = atOptions;
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
+    
+    if (adContainerRef.current) {
+      adContainerRef.current.appendChild(script);
+    }
+
+    return () => {
+      if (adContainerRef.current) {
+        const scripts = adContainerRef.current.getElementsByTagName('script');
+        Array.from(scripts).forEach(script => script.remove());
+      }
+    };
+  }, [adKey, width, height]);
+
+  return (
+    <div ref={adContainerRef} className={className} />
+  );
+};
+
+const AD_CONFIGS = {
+  rectangle: {
+    type: 'effective' as const,
+    containerId: '96574d2701ebf1291000c6202c20a41f',
+    scriptSrc: '//pl19047361.effectiveratecpm.com/96574d2701ebf1291000c6202c20a41f/invoke.js'
+  },
+  leaderboard: {
+    type: 'standard' as const,
+    key: '107614155ac85467a976d2710434bc1b',
+    width: 728,
+    height: 90
+  },
+  banner: {
+    type: 'standard' as const,
+    key: 'c16631c1e95d39875fa6084bcab7e9b6',
+    width: 468,
+    height: 60
+  }
+};
+
+const Ad: React.FC<{ type: keyof typeof AD_CONFIGS, className?: string }> = ({ type, className = "" }) => {
+  const config = AD_CONFIGS[type];
+  
+  if (config.type === 'effective') {
+    return (
+      <EffectiveAd
+        containerId={config.containerId}
+        scriptSrc={config.scriptSrc}
+        className={className}
+      />
+    );
+  }
+
+  return (
+    <AdScript
+      adKey={config.key}
+      width={config.width}
+      height={config.height}
+      className={className}
+    />
+  );
+};
+
+// Ad Component Types and Implementation
+const AD_CONFIGS1 = {
+  rectangle: {
+    key: '4f89c623c272ffdc399782a0e443dc34',
+    width: 300,
+    height: 250
+  },
+  leaderboard: {
+    key: '107614155ac85467a976d2710434bc1b',
+    width: 728,
+    height: 90
+  },
+  banner: {
+    key: 'c16631c1e95d39875fa6084bcab7e9b6',
+    width: 468,
+    height: 60
+  }
+} as const;
+
+type AdType = keyof typeof AD_CONFIGS1;
+
+interface AdProps {
+  type: AdType;
+  className?: string;
+}
+
+const Ad2: React.FC<AdProps> = ({ type, className = "" }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const config = AD_CONFIGS1[type];
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    (window as any).atOptions = {
+      'key': config.key,
+      'format': 'iframe',
+      'height': config.height,
+      'width': config.width,
+      'params': {}
+    };
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = `//www.highperformanceformat.com/${config.key}/invoke.js`;
+    
+    containerRef.current.appendChild(script);
+
+    return () => {
+      if (containerRef.current) {
+        const scripts = containerRef.current.getElementsByTagName('script');
+        Array.from(scripts).forEach(script => script.remove());
+      }
+    };
+  }, [config.key, config.height, config.width]);
+
+  return (
+    <div 
+      ref={containerRef} 
+      className={className}
+      style={{ 
+        width: config.width, 
+        height: config.height,
+        overflow: 'hidden'
+      }}
+    />
+  );
+};
+
 
 // Toast Component
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => (
@@ -441,6 +601,11 @@ const HomePage: React.FC = () => {
         ) : (
           <div className="max-w-[750px] mx-auto">
             <main className="px-4 py-4">
+              {/* Large Ad Banner (728x90) above slider */}
+              <div className="mb-4 -mx-4 flex justify-center">
+                {/* <Ad type="leaderboard" className='overflow-hidden'/> */}
+              </div>
+
               {/* Live Games Slider */}
               {liveGames.length > 0 && (
                 <div className="bg-blue-50/50 -mx-4 px-4 py-4 border-y border-blue-100/50 mb-4">
@@ -491,6 +656,11 @@ const HomePage: React.FC = () => {
                 </div>
               )}
 
+              {/* Medium Ad Banner (468x60) below slider */}
+              <div className="mb-4 -mx-4 flex justify-center">
+                {/* <Ad type="banner"  /> */}
+              </div>
+
               {/* Live and Scheduled Matches */}
               <div className="space-y-[1px] bg-blue-100/30">
                 {[...matches.live, ...matches.scheduled].map((match) => (
@@ -520,6 +690,7 @@ const HomePage: React.FC = () => {
                               <span className="text-sm px-1">{match.awayTeam}</span>
                             </div>
                           </div>
+
                         </div>
                       </div>
                       <span className={`flex items-center text-xs px-3 py-1 rounded-lg ${
@@ -533,9 +704,9 @@ const HomePage: React.FC = () => {
                 ))}
               </div>
 
-              {/* Adsterra Native Banner */}
-              <div className="my-6">
-                <AdsterraNativeBanner />
+              {/* Rectangle Ad Banner (300x250) between live and finished matches */}
+              <div className="my-6 flex justify-center">
+                <Ad2 type="rectangle" />
               </div>
 
               {/* Finished Matches */}
@@ -567,6 +738,7 @@ const HomePage: React.FC = () => {
                                   <span className="text-sm px-1">{match.awayTeam}</span>
                                 </div>
                               </div>
+                              
                             </div>
                           </div>
                           <span className="text-gray-500 font-medium text-sm self-center">
