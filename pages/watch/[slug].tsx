@@ -63,6 +63,24 @@ const WatchPage: React.FC = () => {
   const [relatedStreams, setRelatedStreams] = useState<RelatedStream[]>([]);
   const iframeContainerRef = useRef<HTMLDivElement>(null);
 
+  const Popunder = () => {
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = 'https://shebudriftaiter.net/tag.min.js';
+        script.setAttribute('data-zone', '8916172');
+
+        const target = document.body || document.documentElement;
+        target.appendChild(script);
+
+        return () => {
+            target.removeChild(script);
+        };
+    }, []);
+
+    return null;
+};
+
+
   // Time formatting utilities
   const formatMatchTime = (utcTime: string | Date): string => {
     let localTime: Date;
@@ -374,6 +392,7 @@ const WatchPage: React.FC = () => {
       <Head>
         <title>{match ? `${match.homeTeam.name} vs ${match.awayTeam.name} - Live Stream` : 'Loading Match...'}</title>
         <meta name="description" content={match ? `Watch ${match.homeTeam.name} vs ${match.awayTeam.name} live stream` : 'Live sports streaming'} />
+        
         <style>{`
           .video-container-custom11 {
             position: relative;
@@ -434,6 +453,8 @@ const WatchPage: React.FC = () => {
           }
         `}</style>
       </Head>
+
+      <Popunder />
 
       <div className="min-h-screen bg-gray-900 text-white">
         {/* Header - Score808 Navbar */}
@@ -550,7 +571,7 @@ const WatchPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-black">
-                  <div className="h-12 w-12 rounded-full border-4 border-gray-600 border-t-gray-200 animate-spin bg-black"></div>
+                  <div className="h-12 w-12 rounded-full border-4 border-gray-600 border-t-gray-200 animate-spin"></div>
                 </div>
               )}
             </div>
