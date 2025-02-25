@@ -124,22 +124,24 @@ interface TeamLogoProps {
   className?: string;
 }
 
-const TeamLogo: React.FC<TeamLogoProps> = ({ logoUrl, teamName, className = "w-6 h-6 mr-2" }) => {
+const TeamLogo: React.FC<TeamLogoProps> = ({ logoUrl, teamName, className = "w-5 h-5 mr-2" }) => {
   const [hasError, setHasError] = React.useState<boolean>(false);
   
   const handleError = (): void => {
     setHasError(true);
   };
-
+  
   return hasError ? (
     <FallbackLogo teamName={teamName} />
   ) : (
-    <img 
-      src={logoUrl} 
-      alt={`${teamName} logo`} 
-      className={className}
-      onError={handleError}
-    />
+    <div className="flex items-center justify-center overflow-hidden">
+      <img
+        src={logoUrl}
+        alt={`${teamName} logo`}
+        className={`object-contain ${className}`}
+        onError={handleError}
+      />
+    </div>
   );
 };
 
@@ -440,10 +442,10 @@ const HomePage: React.FC = () => {
           <div className="text-red-600 text-center py-8">{error}</div>
         ) : (
           <div className="max-w-[750px] mx-auto">
-            <main className="px-4 py-4">
+            <main className="py-4">
               {/* Live Games Slider */}
               {liveGames.length > 0 && (
-                <div className="bg-blue-50/50 -mx-4 px-4 py-4 border-y border-blue-100/50 mb-4">
+                <div className="bg-blue-50/50 px-4 py-4 border-y border-blue-100/50 mb-4">
                   <div 
                     ref={sliderRef}
                     className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
@@ -492,7 +494,7 @@ const HomePage: React.FC = () => {
               )}
 
               {/* Live and Scheduled Matches */}
-              <div className="space-y-[1px] bg-blue-100/30">
+              {/* <div className="space-y-[1px] bg-blue-100/30">
                 {[...matches.live, ...matches.scheduled].map((match) => (
                   <div 
                     key={match.id}
@@ -531,7 +533,54 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              </div> */}
+
+                            {/* Live and Scheduled Matches */}
+<div className="space-y-0.5 bg-blue-100/30">
+  {[...matches.live, ...matches.scheduled].map((match) => (
+    <div
+      key={match.id}
+      className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
+      onClick={() => window.location.href = match.eventUrl}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-gray-600/70 text-sm block mb-4 pl-1">{match.tournament}</span>
+          <div className="flex md:gap-16 sm:gap-12 gap-8">
+            <div className="flex items-center">
+              <button className="text-gray-400 hover:text-[#002157]">
+                <Star size={18} />
+              </button>
+              <span className={`text-xs px-2 py-0.5 rounded ${match.status === 'Live' ? 'text-red-500' : 'text-gray-500'} self-center`}>
+                {match.display}
+              </span>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center text-gray-900">
+                <span className={`text-gray-600 font-bold mr-2 px-1 ${match.status === 'Live' ? 'bg-red-200/30' : 'bg-gray-200/30'}`}>-</span>
+                <TeamLogo logoUrl={match.homeTeamLogo} teamName={match.homeTeam} />
+                <span className="text-sm font-medium px-2">{match.homeTeam}</span>
               </div>
+              <div className="flex items-center text-gray-900">
+                <span className={`text-gray-600 font-bold mr-2 px-1 ${match.status === 'Live' ? 'bg-red-200/30' : 'bg-gray-200/30'}`}>-</span>
+                <TeamLogo logoUrl={match.awayTeamLogo} teamName={match.awayTeam} />
+                <span className="text-sm font-medium px-2">{match.awayTeam}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span className={`flex items-center text-xs px-3 py-1 rounded-lg font-bold ${
+          match.status === 'Live' ? 'bg-blue-900 text-white' : 'bg-gray-300 text-gray-500/70 bg-opacity-50'
+        } self-center`}>
+          <Tv className="mr-1" size={15} />
+          Live
+        </span>
+      </div>
+    </div>
+  ))}
+</div>
+
+
 
               {/* Adsterra Native Banner */}
               <div className="my-6">
@@ -539,45 +588,51 @@ const HomePage: React.FC = () => {
               </div>
 
               {/* Finished Matches */}
-              {matches.finished.length > 0 && (
-                <div className="mt-6">
-                  <div className="text-sm text-gray-500 px-1 mb-2">Finished</div>
-                  <div className="space-y-[1px] bg-blue-100/30">
-                    {matches.finished.map((match) => (
-                      <div 
-                        key={match.id}
-                        className="bg-white p-3 hover:cursor-pointer"
-                        onClick={() => window.location.href = match.eventUrl}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-gray-600 text-sm block mb-2">{match.tournament}</span>
-                            <div className="flex gap-6">
-                              <button className="text-gray-400 hover:text-[#002157]">
-                                <Star size={18} />
-                              </button>
-
-                              <div className="space-y-2">
-                                <div className="flex items-center text-gray-900">
-                                  <TeamLogo logoUrl={match.homeTeamLogo} teamName={match.homeTeam} />
-                                  <span className="text-sm px-1">{match.homeTeam}</span>
-                                </div>
-                                <div className="flex items-center text-gray-900">
-                                  <TeamLogo logoUrl={match.awayTeamLogo} teamName={match.awayTeam} />
-                                  <span className="text-sm px-1">{match.awayTeam}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <span className="text-gray-500 font-medium text-sm self-center">
-                            {match.display}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+{matches.finished.length > 0 && (
+  <div className="mt-6">
+    <div className="text-sm text-gray-500 px-1 mb-2">Finished</div>
+    <div className="space-y-0.5 bg-blue-100/30">
+      {matches.finished.map((match) => (
+        <div
+          key={match.id}
+          className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
+          onClick={() => window.location.href = match.eventUrl}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-gray-600/70 text-sm block mb-4 pl-1">{match.tournament}</span>
+              <div className="flex md:gap-16 sm:gap-12 gap-8">
+                <div className="flex items-center">
+                  <button className="text-gray-400 hover:text-[#002157]">
+                    <Star size={18} />
+                  </button>
+                  <span className="text-xs px-2 py-0.5 rounded text-gray-500 self-center">
+                    FT
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center text-gray-900">
+                    <span className="text-gray-600 font-bold mr-2 px-1 bg-gray-200/30">-</span>
+                    <TeamLogo logoUrl={match.homeTeamLogo} teamName={match.homeTeam} />
+                    <span className="text-sm font-medium px-2">{match.homeTeam}</span>
+                  </div>
+                  <div className="flex items-center text-gray-900">
+                    <span className="text-gray-600 font-bold mr-2 px-1 bg-gray-200/30">-</span>
+                    <TeamLogo logoUrl={match.awayTeamLogo} teamName={match.awayTeam} />
+                    <span className="text-sm font-medium px-2">{match.awayTeam}</span>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+            <span className="text-gray-500/70 font-bold text-sm self-center">
+              {match.display}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
             </main>
           </div>
         )}

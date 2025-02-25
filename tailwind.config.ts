@@ -12,10 +12,25 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      fontFamily: {
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Helvetica Neue",
+          "Helvetica",
+          "Segoe UI",
+          "Arial",
+          "Roboto",
+          "PingFang SC",
+          "miui",
+          "Hiragino Sans GB",
+          "Microsoft Yahei",
+          "sans-serif",
+        ],
+      },
     },
   },
   plugins: [],
 };
 
 export default config;
-
