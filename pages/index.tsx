@@ -39,6 +39,7 @@ interface ApiResponse {
 }
 
 interface RawMatch {
+  id: string;
   homeTeam: string;
   awayTeam: string;
   competition: string;
@@ -248,21 +249,23 @@ const HomePage: React.FC = () => {
     } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
       return { status: 'Live', display: `Live` };
     } else {
-      return { status: 'FT', display: 'FT' };
+      return { status: 'FT', display: 'FINISHED' };
     }
   };
 
   const fetchMatches = async (showLoading = false): Promise<void> => {
     if (showLoading) setIsLoading(true);
     try {
-      const response = await fetch('https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog1.json');
+      const response = await fetch('https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsbrog3.json');
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
       const data: ApiResponse = await response.json();
 
       const processedMatches: Match[] = data.today.map(match => ({
-        id: `${match.homeTeam}-${match.awayTeam}`.replace(/\s/g, ''),
+        id: match.id
+        // `${match.homeTeam}-${match.awayTeam}`.replace(/\s/g, '')
+        ,
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
         tournament: match.competition,
@@ -460,7 +463,15 @@ const HomePage: React.FC = () => {
                         <div 
                           key={game.id}
                           className="bg-blue-50/50 rounded-lg p-3 hover:bg-gray-50 transition w-60 flex-shrink-0 shadow-sm border border-blue-100 min-h-[120px]"
-                          onClick={() => window.location.href = game.eventUrl}
+                          // onClick={() => window.location.href = game.eventUrl}
+
+                          onClick={() => {
+                            // Create a slug with team names
+                            const slug = `live-${game.homeTeam.replace(/\s+/g, '-').toLowerCase()}-vs-${game.awayTeam.replace(/\s+/g, '-').toLowerCase()}-live-stream`;
+                            
+                            const url = `/watch/${game.id}`
+                            window.location.href = url;
+                          }}
                         >
                           <div className="flex justify-between items-center mb-2">
                             <div className="flex items-center gap-2">
@@ -493,55 +504,20 @@ const HomePage: React.FC = () => {
                 </div>
               )}
 
-              {/* Live and Scheduled Matches */}
-              {/* <div className="space-y-[1px] bg-blue-100/30">
-                {[...matches.live, ...matches.scheduled].map((match) => (
-                  <div 
-                    key={match.id}
-                    className="bg-white p-3 hover:cursor-pointer"
-                    onClick={() => window.location.href = match.eventUrl}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-gray-600 text-sm block mb-2">{match.tournament}</span>
-                        <div className="flex gap-6">
-                          <button className="text-gray-400 hover:text-[#002157]">
-                            <Star size={18} />
-                          </button>
-                          <span className={`text-xs px-2 py-0.5 rounded ${match.status === 'Live' ? 'text-red-500' : 'text-gray-500'} self-center`}>
-                            {match.display}
-                          </span>
-
-                          <div className="space-y-2">
-                            <div className="flex items-center text-gray-900">
-                              <TeamLogo logoUrl={match.homeTeamLogo} teamName={match.homeTeam} />
-                              <span className="text-sm px-1">{match.homeTeam}</span>
-                            </div>
-                            <div className="flex items-center text-gray-900">
-                              <TeamLogo logoUrl={match.awayTeamLogo} teamName={match.awayTeam} />
-                              <span className="text-sm px-1">{match.awayTeam}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <span className={`flex items-center text-xs px-3 py-1 rounded-lg ${
-                        match.status === 'Live' ? 'bg-blue-900 text-white' : 'bg-gray-300 text-gray-500 bg-opacity-50'
-                      } self-center`}>
-                        <Tv className="mr-1" size={15} />
-                        Live
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div> */}
-
                             {/* Live and Scheduled Matches */}
 <div className="space-y-0.5 bg-blue-100/30">
   {[...matches.live, ...matches.scheduled].map((match) => (
     <div
       key={match.id}
       className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
-      onClick={() => window.location.href = match.eventUrl}
+      // onClick={() => window.location.href = match.eventUrl}
+      onClick={() => {
+        // Create a slug with team names
+        const slug = `live-${match.homeTeam.replace(/\s+/g, '-').toLowerCase()}-vs-${match.awayTeam.replace(/\s+/g, '-').toLowerCase()}-live-stream`;
+        
+        const url = `/watch/${match.id}`
+        window.location.href = url;
+      }}
     >
       <div className="flex items-center justify-between">
         <div>
@@ -596,7 +572,14 @@ const HomePage: React.FC = () => {
         <div
           key={match.id}
           className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
-          onClick={() => window.location.href = match.eventUrl}
+          // onClick={() => window.location.href = match.eventUrl}
+          onClick={() => {
+            // Create a slug with team names
+            const slug = `live-${match.homeTeam.replace(/\s+/g, '-').toLowerCase()}-vs-${match.awayTeam.replace(/\s+/g, '-').toLowerCase()}-live-stream`;
+            
+            const url = `/watch/${match.id}`
+            window.location.href = url;
+          }}
         >
           <div className="flex items-center justify-between">
             <div>
