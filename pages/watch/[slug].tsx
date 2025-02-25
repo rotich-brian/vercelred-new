@@ -63,21 +63,39 @@ const WatchPage: React.FC = () => {
   const [relatedStreams, setRelatedStreams] = useState<RelatedStream[]>([]);
   const iframeContainerRef = useRef<HTMLDivElement>(null);
 
-  const Popunder = () => {
-    useEffect(() => {
-        const script = document.createElement('script');
-        script.src = 'https://shebudriftaiter.net/tag.min.js';
-        script.setAttribute('data-zone', '8916172');
+//   const Popunder = () => {
+//     useEffect(() => {
+//         const script = document.createElement('script');
+//         script.src = 'https://shebudriftaiter.net/tag.min.js';
+//         script.setAttribute('data-zone', '8916172');
 
-        const target = document.body || document.documentElement;
-        target.appendChild(script);
+//         const target = document.body || document.documentElement;
+//         target.appendChild(script);
 
-        return () => {
-            target.removeChild(script);
-        };
-    }, []);
+//         return () => {
+//             target.removeChild(script);
+//         };
+//     }, []);
 
-    return null;
+//     return null;
+// };
+
+const Popunder = () => {
+  useEffect(() => {
+    // Check if the script already exists to avoid re-adding
+    if (!document.getElementById("popunder-script")) {
+      const script = document.createElement("script");
+      script.id = "popunder-script"; // Give the script a unique ID
+      script.src = "https://shebudriftaiter.net/tag.min.js";
+      script.setAttribute("data-zone", "8916172");
+      script.async = true;
+
+      // Append the script to the body
+      document.body.appendChild(script);
+    }
+  }, []); // Empty dependency array ensures this only runs once
+
+  return null; // No visible component, just load the script
 };
 
 
