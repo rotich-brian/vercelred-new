@@ -1,4 +1,4 @@
-import Document, { Html, Head, Main, NextScript } from 'next/document';
+import Document, { Html, Head, Main, NextScript } from "next/document";
 
 class MyDocument extends Document {
   render() {
@@ -31,6 +31,19 @@ class MyDocument extends Document {
             async
             src="//pl25596196.profitablecpmrate.com/33/44/7b/33447b828b53f96077881ee158b6b1a8.js"
           ></script>
+
+          {/* Shebudriftaiter Script */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function(s, u, z, p) {
+                  s.src = u;
+                  s.setAttribute('data-zone', z);
+                  p.appendChild(s);
+                })(document.createElement('script'), 'https://shebudriftaiter.net/tag.min.js', 8916172, document.body || document.documentElement);
+              `,
+            }}
+          />
         </Head>
         <body>
           <Main />
