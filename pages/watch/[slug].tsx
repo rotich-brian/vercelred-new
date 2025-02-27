@@ -190,7 +190,7 @@ const WatchPage: React.FC = () => {
       try {
         // Fetch data from GitHub repository
         const response = await fetch(
-          "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsbrog3.json"
+          "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog1.json"
         );
         const data = await response.json();
 
