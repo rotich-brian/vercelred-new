@@ -1,15 +1,5 @@
 import { useState, useRef, useEffect, MouseEvent } from "react";
-import {
-  Star,
-  Tv,
-  Timer,
-  CircleDashed,
-  Send,
-  Circle,
-  User,
-} from "lucide-react";
-import { FaTelegramPlane, FaUser, FaBullhorn } from "react-icons/fa";
-
+import { Star, Tv, Loader2 } from "lucide-react";
 import Head from "next/head";
 import React from "react";
 
@@ -194,12 +184,10 @@ const DateSectionHeader: React.FC<{ date: string }> = ({ date }) => {
 
 const MatchItem: React.FC<{ match: Match }> = ({ match }) => (
   <div
-    className="bg-white p-2 hover:cursor-pointer border-b border-gray-100"
+    className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
     onClick={() => {
-      const url = match.id ? `/watch/${match.id}` : match.eventUrl;
-      if (url) {
-        window.location.href = url;
-      }
+      const url = `/watch/${match.id}`;
+      window.location.href = url;
     }}
   >
     <div className="flex items-center justify-between">
@@ -207,19 +195,16 @@ const MatchItem: React.FC<{ match: Match }> = ({ match }) => (
         <span className="text-gray-600/70 text-sm block mb-4 pl-1">
           {match.tournament}
         </span>
-        <div className="flex md:gap-16 sm:gap-12 gap-8 p-2">
+        <div className="flex md:gap-16 sm:gap-12 gap-8">
           <div className="flex items-center">
             <button className="text-gray-400 hover:text-[#002157]">
-              <Star size={22} />
+              <Star size={18} />
             </button>
             <span
-              className={`text-xs px-2 py-0.5 rounded min-w-[50px] md:min-w-[100px] text-center flex items-center gap-1 ${
-                match.status === "Live" ? "text-red-600" : "text-gray-500"
+              className={`text-xs px-2 py-0.5 rounded ${
+                match.status === "Live" ? "text-red-500" : "text-gray-500"
               } self-center`}
             >
-              {match.status === "Live" && (
-                <Timer size={16} className="text-red-300" />
-              )}
               {match.display}
             </span>
           </div>
@@ -568,8 +553,7 @@ const HomePage: React.FC = () => {
   ] as const;
 
   return (
-    // <div className="min-h-screen bg-gray-50">
-    <div className="min-h-screen bg-[rgb(237,238,238)]">
+    <div className="min-h-screen bg-gray-50">
       <Head>
         <meta charSet="utf-8" />
         <title>
@@ -675,21 +659,16 @@ const HomePage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <button className="text-white">
-                    <span className="sr-only">Telegram</span>
-                    <Send size={20} className="fill-current" />
+                    <span className="sr-only">Messages</span>
+                    💬
                   </button>
-                  <button className="text-white relative">
-                    <span className="sr-only">Advert</span>
-                    <div className="relative">
-                      <Circle size={20} className="fill-current" />
-                      <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[8px] font-bold text-black">
-                        AD
-                      </span>
-                    </div>
+                  <button className="text-white">
+                    <span className="sr-only">Settings</span>
+                    ⚙️
                   </button>
                   <button className="text-white">
                     <span className="sr-only">Profile</span>
-                    <User size={24} className="fill-current" />
+                    👤
                   </button>
                 </div>
               </div>
@@ -698,13 +677,13 @@ const HomePage: React.FC = () => {
 
           <div className="max-w-[750px] bg-white mx-auto">
             <nav>
-              <div className="flex justify-center px-2 py-2">
+              <div className="flex justify-center px-4 py-2 space-x-6">
                 {sports.map((sport) => (
                   <button
                     key={sport.name}
                     onClick={() => setSelectedSport(sport.name)}
-                    className={`flex items-center gap-2 px-4 py-2 flex-grow basis-0 justify-center ${
-                      selectedSport === sport.name && selectedSport
+                    className={`flex items-center gap-2 px-4 py-2 ${
+                      selectedSport === sport.name
                         ? "text-[#002157] border-b-2 border-[#002157]"
                         : "text-gray-600"
                     }`}
@@ -721,16 +700,16 @@ const HomePage: React.FC = () => {
         {/* Main Content */}
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <CircleDashed className="h-6 w-6 animate-spin text-gray-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
           </div>
         ) : error ? (
           <div className="text-red-600 text-center py-8">{error}</div>
         ) : (
           <div className="max-w-[750px] mx-auto">
-            <main>
+            <main className="py-4">
               {/* Live Games Slider */}
               {liveGames.length > 0 && (
-                <div className="bg-blue-50/50 px-4 py-4 border-y border-blue-100/50 m-0">
+                <div className="bg-blue-50/50 px-4 py-4 border-y border-blue-100/50 mb-4">
                   <div
                     ref={sliderRef}
                     className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
@@ -740,12 +719,21 @@ const HomePage: React.FC = () => {
                     onMouseMove={handleMouseMove}
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                   >
-                    <div className="flex gap-3 min-w-min pb-0.5">
+                    <div className="flex gap-3 min-w-min pb-2">
                       {liveGames.map((game) => (
                         <div
                           key={game.id}
-                          className="bg-blue-50/50 rounded-lg p-3 hover:bg-gray-50 transition w-60 flex-shrink-0 shadow-sm border border-blue-300 min-h-[120px]"
+                          className="bg-blue-50/50 rounded-lg p-3 hover:bg-gray-50 transition w-60 flex-shrink-0 shadow-sm border border-blue-100 min-h-[120px]"
+                          // onClick={() => window.location.href = game.eventUrl}
+
                           onClick={() => {
+                            // Create a slug with team names
+                            const slug = `live-${game.homeTeam
+                              .replace(/\s+/g, "-")
+                              .toLowerCase()}-vs-${game.awayTeam
+                              .replace(/\s+/g, "-")
+                              .toLowerCase()}-live-stream`;
+
                             const url = `/watch/${game.id}`;
                             window.location.href = url;
                           }}
@@ -755,20 +743,11 @@ const HomePage: React.FC = () => {
                               <span className="text-gray-600 text-xs">
                                 {game.tournament}
                               </span>
-                              {game.status === "Live" ? (
-                                <>
-                                  <span className="text-xs px-2 py-0.5 rounded bg-red-700 text-white">
-                                    Live
-                                  </span>
-                                  <Tv size={18} className="text-orange-600" />
-                                </>
-                              ) : (
-                                <span className="text-xs px-2 py-0.5 rounded bg-blue-900 text-white">
-                                  {game.display}{" "}
-                                  {/* Keep schedule time for non-live games */}
-                                </span>
-                              )}
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-900 text-white">
+                                {game.display}
+                              </span>
                             </div>
+                            <Tv size={18} className="text-orange-600" />
                           </div>
                           <div className="flex justify-between items-center">
                             <div className="space-y-2">
@@ -803,7 +782,7 @@ const HomePage: React.FC = () => {
               )}
 
               {/* Today's Live and Scheduled Matches */}
-              <div className="space-y-0.4 bg-blue-100/30">
+              <div className="space-y-0.5 bg-blue-100/30">
                 {matches.live.map((match) => (
                   <MatchItem key={`live-${match.id}`} match={match} />
                 ))}
@@ -818,9 +797,9 @@ const HomePage: React.FC = () => {
               {Object.keys(matches.byDate)
                 .sort()
                 .map((dateString) => (
-                  <div key={dateString} className="mt-0.5">
+                  <div key={dateString} className="mt-4">
                     <DateSectionHeader date={dateString} />
-                    <div className="space-y-0.4 bg-blue-100/30">
+                    <div className="space-y-0.5 bg-blue-100/30">
                       {matches.byDate[dateString].map((match) => (
                         <MatchItem
                           key={`${dateString}-${match.id}`}
@@ -838,14 +817,11 @@ const HomePage: React.FC = () => {
 
               {/* Finished Matches */}
               {matches.finished.length > 0 && (
-                <div className="mt-5">
-                  <div className="text-sm text-gray-500 px-1 mb-2 text-center">
-                    <h2 className="text-sm font-semibold text-gray-500">
-                      Finished Matches
-                    </h2>
+                <div className="mt-6">
+                  <div className="text-sm text-gray-500 px-1 mb-2">
+                    Finished
                   </div>
-
-                  <div className="space-y-0.4 bg-blue-100/30">
+                  <div className="space-y-0.5 bg-blue-100/30">
                     {matches.finished.map((match) => (
                       <div
                         key={match.id}
