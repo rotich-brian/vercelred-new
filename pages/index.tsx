@@ -157,13 +157,22 @@ const DateSectionHeader: React.FC<{ date: string }> = ({ date }) => {
     const [day, month, year] = date.split("-");
     const dateObj = new Date(`${year}-${month}-${day}`);
 
-    // Format: "Tuesday, 5 Mar 2025"
-    return dateObj.toLocaleDateString("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    // Check if it's today
+    const today = new Date();
+    const isToday =
+      dateObj.getDate() === today.getDate() &&
+      dateObj.getMonth() === today.getMonth() &&
+      dateObj.getFullYear() === today.getFullYear();
+
+    // Format: "Today" or "Tuesday, 5 Mar 2025"
+    return isToday
+      ? "Today"
+      : dateObj.toLocaleDateString("en-GB", {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
   })();
 
   return (
@@ -312,17 +321,15 @@ const HomePage: React.FC = () => {
   };
 
   const formatMatchTime = (utcTime: string | Date): string => {
-    let localTime: Date;
+    let matchTime: Date;
 
     if (utcTime instanceof Date) {
-      localTime = new Date(
-        utcTime.getTime() - utcTime.getTimezoneOffset() * 60000
-      );
+      matchTime = new Date(utcTime);
     } else if (typeof utcTime === "string") {
       const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-      localTime = new Date(utcTimeISO);
+      matchTime = new Date(utcTimeISO);
 
-      if (isNaN(localTime.getTime())) {
+      if (isNaN(matchTime.getTime())) {
         console.error("Invalid date format:", utcTime);
         return "Invalid time";
       }
@@ -331,7 +338,7 @@ const HomePage: React.FC = () => {
       return "Invalid time";
     }
 
-    return localTime.toLocaleTimeString([], {
+    return matchTime.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -339,26 +346,25 @@ const HomePage: React.FC = () => {
   };
 
   const formatStatusTime = (utcTime: string | Date): Date => {
-    let localTime: Date;
+    let matchTime: Date;
 
     if (utcTime instanceof Date) {
-      localTime = new Date(
-        utcTime.getTime() - utcTime.getTimezoneOffset() * 60000
-      );
+      matchTime = new Date(utcTime);
     } else if (typeof utcTime === "string") {
       const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-      localTime = new Date(utcTimeISO);
+      matchTime = new Date(utcTimeISO);
 
-      if (isNaN(localTime.getTime())) {
+      if (isNaN(matchTime.getTime())) {
         console.error("Invalid date format:", utcTime);
-        return localTime;
+        return matchTime;
       }
     } else {
       console.error("Expected a string or Date but received:", typeof utcTime);
       return new Date();
     }
 
-    return localTime;
+    // Return the date in local time (don't adjust for timezone)
+    return matchTime;
   };
 
   const getMatchStatus = (matchTime: string | Date): MatchStatus => {
@@ -381,28 +387,22 @@ const HomePage: React.FC = () => {
   };
 
   const getMatchDateKey = (matchTime: Date): string => {
-    // Create a new date object using UTC values to avoid timezone issues
-    const matchDate = new Date(
-      Date.UTC(
-        matchTime.getUTCFullYear(),
-        matchTime.getUTCMonth(),
-        matchTime.getUTCDate()
-      )
-    );
+    // Format for display: DD-MM-YYYY using local time
+    const day = String(matchTime.getDate()).padStart(2, "0");
+    const month = String(matchTime.getMonth() + 1).padStart(2, "0");
+    const year = matchTime.getFullYear();
 
-    // Format for display: DD-MM-YYYY
-    return matchDate.toISOString().split("T")[0].split("-").reverse().join("-");
+    return `${day}-${month}-${year}`;
   };
 
-  // 2. Function to check if a match is "today" in UTC
   const isMatchToday = (matchTime: Date): boolean => {
     const now = new Date();
 
-    // Compare UTC dates
+    // Compare local dates
     return (
-      matchTime.getUTCDate() === now.getUTCDate() &&
-      matchTime.getUTCMonth() === now.getUTCMonth() &&
-      matchTime.getUTCFullYear() === now.getUTCFullYear()
+      matchTime.getDate() === now.getDate() &&
+      matchTime.getMonth() === now.getMonth() &&
+      matchTime.getFullYear() === now.getFullYear()
     );
   };
 
