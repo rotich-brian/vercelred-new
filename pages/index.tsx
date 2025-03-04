@@ -3,7 +3,6 @@ import { Star, Tv, Loader2 } from "lucide-react";
 import Head from "next/head";
 import React from "react";
 
-// Types
 interface ToastProps {
   message: string;
   type: "error" | "success";
@@ -32,6 +31,7 @@ interface MatchesState {
   live: Match[];
   scheduled: Match[];
   finished: Match[];
+  byDate: Record<string, Match[]>;
 }
 
 interface ApiResponse {
@@ -151,6 +151,100 @@ const TeamLogo: React.FC<TeamLogoProps> = ({
   );
 };
 
+const DateSectionHeader: React.FC<{ date: string }> = ({ date }) => {
+  // Convert date string (DD-MM-YYYY) to a more readable format
+  const formattedDate = (() => {
+    const [day, month, year] = date.split("-");
+    const dateObj = new Date(`${year}-${month}-${day}`);
+
+    // Format: "Tuesday, 5 Mar 2025"
+    return dateObj.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  })();
+
+  return (
+    <div className="sticky top-[114px] bg-gradient-to-r from-blue-50 to-white py-3 px-4 border-y border-blue-100/50 z-[5]">
+      <h2 className="text-sm font-semibold text-blue-900">{formattedDate}</h2>
+    </div>
+  );
+};
+
+const MatchItem: React.FC<{ match: Match }> = ({ match }) => (
+  <div
+    className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
+    onClick={() => {
+      const url = `/watch/${match.id}`;
+      window.location.href = url;
+    }}
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <span className="text-gray-600/70 text-sm block mb-4 pl-1">
+          {match.tournament}
+        </span>
+        <div className="flex md:gap-16 sm:gap-12 gap-8">
+          <div className="flex items-center">
+            <button className="text-gray-400 hover:text-[#002157]">
+              <Star size={18} />
+            </button>
+            <span
+              className={`text-xs px-2 py-0.5 rounded ${
+                match.status === "Live" ? "text-red-500" : "text-gray-500"
+              } self-center`}
+            >
+              {match.display}
+            </span>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center text-gray-900">
+              <span
+                className={`text-gray-600 font-bold mr-2 px-1 ${
+                  match.status === "Live" ? "bg-red-200/30" : "bg-gray-200/30"
+                }`}
+              >
+                -
+              </span>
+              <TeamLogo
+                logoUrl={match.homeTeamLogo}
+                teamName={match.homeTeam}
+              />
+              <span className="text-sm font-medium px-2">{match.homeTeam}</span>
+            </div>
+            <div className="flex items-center text-gray-900">
+              <span
+                className={`text-gray-600 font-bold mr-2 px-1 ${
+                  match.status === "Live" ? "bg-red-200/30" : "bg-gray-200/30"
+                }`}
+              >
+                -
+              </span>
+              <TeamLogo
+                logoUrl={match.awayTeamLogo}
+                teamName={match.awayTeam}
+              />
+              <span className="text-sm font-medium px-2">{match.awayTeam}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span
+        className={`flex items-center text-xs px-3 py-1 rounded-lg font-bold ${
+          match.status === "Live"
+            ? "bg-blue-900 text-white"
+            : "bg-gray-300 text-gray-500/70 bg-opacity-50"
+        } self-center`}
+      >
+        <Tv className="mr-1" size={15} />
+        Live
+      </span>
+    </div>
+  </div>
+);
+
 // Main HomePage Component
 const HomePage: React.FC = () => {
   const [selectedSport, setSelectedSport] = useState<
@@ -161,7 +255,9 @@ const HomePage: React.FC = () => {
     live: [],
     scheduled: [],
     finished: [],
+    byDate: {},
   });
+
   const [liveGames, setLiveGames] = useState<Match[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [startX, setStartX] = useState<number>(0);
@@ -175,6 +271,14 @@ const HomePage: React.FC = () => {
   const sliderRef = useRef<HTMLDivElement>(null);
 
   // Helper Functions
+  const formatDisplayDate = (date: Date): string => {
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   const showToast = (
     message: string,
     type: "error" | "success" = "success"
@@ -276,6 +380,32 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const getMatchDateKey = (matchTime: Date): string => {
+    // Create a new date object using UTC values to avoid timezone issues
+    const matchDate = new Date(
+      Date.UTC(
+        matchTime.getUTCFullYear(),
+        matchTime.getUTCMonth(),
+        matchTime.getUTCDate()
+      )
+    );
+
+    // Format for display: DD-MM-YYYY
+    return matchDate.toISOString().split("T")[0].split("-").reverse().join("-");
+  };
+
+  // 2. Function to check if a match is "today" in UTC
+  const isMatchToday = (matchTime: Date): boolean => {
+    const now = new Date();
+
+    // Compare UTC dates
+    return (
+      matchTime.getUTCDate() === now.getUTCDate() &&
+      matchTime.getUTCMonth() === now.getUTCMonth() &&
+      matchTime.getUTCFullYear() === now.getUTCFullYear()
+    );
+  };
+
   const fetchMatches = async (showLoading = false): Promise<void> => {
     if (showLoading) setIsLoading(true);
     try {
@@ -287,28 +417,71 @@ const HomePage: React.FC = () => {
       }
       const data: ApiResponse = await response.json();
 
-      const processedMatches: Match[] = data.today.map((match) => ({
-        id: match.id,
-        // `${match.homeTeam}-${match.awayTeam}`.replace(/\s/g, '')
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
-        tournament: match.competition,
-        ...getMatchStatus(match.time),
-        time: new Date(match.time),
-        eventUrl: match.eventUrl,
-        homeTeamLogo: match.homeTeamLogo,
-        awayTeamLogo: match.awayTeamLogo,
-      }));
+      const processedMatches: Match[] = data.today.map((match) => {
+        // Parse time string to ensure consistent Date object creation
+        let matchTime: Date;
+
+        try {
+          if (match.time.includes(" ")) {
+            // Format: "2025-03-05 14:30:00"
+            const [datePart, timePart] = match.time.split(" ");
+            matchTime = new Date(`${datePart}T${timePart}Z`); // Add Z to ensure UTC interpretation
+          } else {
+            // Already ISO format or similar
+            matchTime = new Date(match.time);
+          }
+
+          // Check if valid
+          if (isNaN(matchTime.getTime())) {
+            console.error("Invalid date format:", match.time);
+            matchTime = new Date(); // Fallback to now
+          }
+        } catch (e) {
+          console.error("Error parsing date:", match.time, e);
+          matchTime = new Date(); // Fallback to now
+        }
+
+        return {
+          id: match.id,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          tournament: match.competition,
+          ...getMatchStatus(matchTime),
+          time: matchTime,
+          eventUrl: match.eventUrl,
+          homeTeamLogo: match.homeTeamLogo,
+          awayTeamLogo: match.awayTeamLogo,
+        };
+      });
 
       const sortedMatches = processedMatches.sort(
         (a, b) => a.time.getTime() - b.time.getTime()
       );
+
       const live = sortedMatches.filter((m) => m.status === "Live");
       const scheduled = sortedMatches.filter((m) => m.status === "Scheduled");
       const finished = sortedMatches.filter((m) => m.status === "FT");
 
-      setLiveGames([...live, ...scheduled].slice(0, 10));
-      setMatches({ live, scheduled, finished });
+      // Group scheduled matches by date in UTC
+      const byDate: Record<string, Match[]> = {};
+
+      scheduled.forEach((match) => {
+        // Skip today's matches as they're shown separately
+        if (isMatchToday(match.time)) return;
+
+        const dateKey = getMatchDateKey(match.time);
+        if (!byDate[dateKey]) {
+          byDate[dateKey] = [];
+        }
+        byDate[dateKey].push(match);
+      });
+
+      // For live games slider, include live and today's scheduled matches
+      setLiveGames(
+        [...live, ...scheduled.filter((m) => isMatchToday(m.time))].slice(0, 10)
+      );
+
+      setMatches({ live, scheduled, finished, byDate });
 
       if (!showLoading) {
         showToast("Events refresh success");
@@ -326,6 +499,7 @@ const HomePage: React.FC = () => {
     }
   };
 
+  // Update the statusInterval to include byDate in the state update
   useEffect(() => {
     fetchMatches(true);
 
@@ -343,6 +517,8 @@ const HomePage: React.FC = () => {
           ...match,
           ...getMatchStatus(match.time),
         })),
+        // Include the byDate property from previous state
+        byDate: prev.byDate,
       }));
     }, 60000);
 
@@ -605,99 +781,34 @@ const HomePage: React.FC = () => {
                 </div>
               )}
 
-              {/* Live and Scheduled Matches */}
+              {/* Today's Live and Scheduled Matches */}
               <div className="space-y-0.5 bg-blue-100/30">
-                {[...matches.live, ...matches.scheduled].map((match) => (
-                  <div
-                    key={match.id}
-                    className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
-                    // onClick={() => window.location.href = match.eventUrl}
-                    onClick={() => {
-                      // Create a slug with team names
-                      const slug = `live-${match.homeTeam
-                        .replace(/\s+/g, "-")
-                        .toLowerCase()}-vs-${match.awayTeam
-                        .replace(/\s+/g, "-")
-                        .toLowerCase()}-live-stream`;
+                {matches.live.map((match) => (
+                  <MatchItem key={`live-${match.id}`} match={match} />
+                ))}
+                {matches.scheduled
+                  .filter((match) => isMatchToday(match.time))
+                  .map((match) => (
+                    <MatchItem key={`today-${match.id}`} match={match} />
+                  ))}
+              </div>
 
-                      const url = `/watch/${match.id}`;
-                      window.location.href = url;
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-gray-600/70 text-sm block mb-4 pl-1">
-                          {match.tournament}
-                        </span>
-                        <div className="flex md:gap-16 sm:gap-12 gap-8">
-                          <div className="flex items-center">
-                            <button className="text-gray-400 hover:text-[#002157]">
-                              <Star size={18} />
-                            </button>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded ${
-                                match.status === "Live"
-                                  ? "text-red-500"
-                                  : "text-gray-500"
-                              } self-center`}
-                            >
-                              {match.display}
-                            </span>
-                          </div>
-                          <div className="space-y-4">
-                            <div className="flex items-center text-gray-900">
-                              <span
-                                className={`text-gray-600 font-bold mr-2 px-1 ${
-                                  match.status === "Live"
-                                    ? "bg-red-200/30"
-                                    : "bg-gray-200/30"
-                                }`}
-                              >
-                                -
-                              </span>
-                              <TeamLogo
-                                logoUrl={match.homeTeamLogo}
-                                teamName={match.homeTeam}
-                              />
-                              <span className="text-sm font-medium px-2">
-                                {match.homeTeam}
-                              </span>
-                            </div>
-                            <div className="flex items-center text-gray-900">
-                              <span
-                                className={`text-gray-600 font-bold mr-2 px-1 ${
-                                  match.status === "Live"
-                                    ? "bg-red-200/30"
-                                    : "bg-gray-200/30"
-                                }`}
-                              >
-                                -
-                              </span>
-                              <TeamLogo
-                                logoUrl={match.awayTeamLogo}
-                                teamName={match.awayTeam}
-                              />
-                              <span className="text-sm font-medium px-2">
-                                {match.awayTeam}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <span
-                        className={`flex items-center text-xs px-3 py-1 rounded-lg font-bold ${
-                          match.status === "Live"
-                            ? "bg-blue-900 text-white"
-                            : "bg-gray-300 text-gray-500/70 bg-opacity-50"
-                        } self-center`}
-                      >
-                        <Tv className="mr-1" size={15} />
-                        Live
-                      </span>
+              {/* Future Matches by Date */}
+              {Object.keys(matches.byDate)
+                .sort()
+                .map((dateString) => (
+                  <div key={dateString} className="mt-4">
+                    <DateSectionHeader date={dateString} />
+                    <div className="space-y-0.5 bg-blue-100/30">
+                      {matches.byDate[dateString].map((match) => (
+                        <MatchItem
+                          key={`${dateString}-${match.id}`}
+                          match={match}
+                        />
+                      ))}
                     </div>
                   </div>
                 ))}
-              </div>
 
               {/* Adsterra Native Banner */}
               <div className="my-6">
