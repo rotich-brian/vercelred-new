@@ -123,7 +123,7 @@ const FloatingButtons: React.FC = () => {
   // Open Telegram channel/group
   const openTelegram = () => {
     // Replace with your actual Telegram group/channel link
-    window.open("https://t.me/ManUtd_Fanz", "_blank");
+    window.open("https://t.me/futball_liveapp", "_blank");
   };
 
   useEffect(() => {
@@ -406,7 +406,7 @@ const HomePage: React.FC = () => {
 
   const openTelegram = () => {
     // Replace with your actual Telegram group/channel link
-    window.open("https://t.me/ManUtd_Fanz", "_blank");
+    window.open("https://t.me/futball_liveapp", "_blank");
   };
 
   const showToast = (
