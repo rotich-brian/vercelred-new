@@ -7,8 +7,12 @@ import {
   Send,
   Circle,
   User,
+  ArrowUp,
 } from "lucide-react";
-import { FaTelegramPlane, FaUser, FaBullhorn } from "react-icons/fa";
+// Import the telegram icon properly
+import { FaUser, FaBullhorn } from "react-icons/fa";
+// For TypeScript compatibility
+import { FaTelegram } from "react-icons/fa";
 
 import Head from "next/head";
 import React from "react";
@@ -58,6 +62,103 @@ interface RawMatch {
   homeTeamLogo: string;
   awayTeamLogo: string;
 }
+
+// Add this Tooltip component
+const Tooltip: React.FC<{
+  text: string;
+  children: React.ReactNode;
+  position?: "top" | "left" | "right" | "bottom";
+}> = ({ text, children, position = "left" }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  const positionClasses = {
+    top: "bottom-full mb-2 left-1/2 transform -translate-x-1/2",
+    bottom: "top-full mt-2 left-1/2 transform -translate-x-1/2",
+    left: "right-full mr-2 top-1/2 transform -translate-y-1/2",
+    right: "left-full ml-2 top-1/2 transform -translate-y-1/2",
+  };
+
+  return (
+    <div className="relative flex items-center justify-center">
+      <div
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        onFocus={() => setIsVisible(true)}
+        onBlur={() => setIsVisible(false)}
+      >
+        {children}
+      </div>
+
+      {isVisible && (
+        <div
+          className={`absolute ${positionClasses[position]} whitespace-nowrap bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-90 z-50 pointer-events-none transition-opacity duration-200`}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FloatingButtons: React.FC = () => {
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+
+  // Show back to top button when page is scrolled down
+  const toggleVisibility = () => {
+    if (window.pageYOffset > 300) {
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
+  };
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // Open Telegram channel/group
+  const openTelegram = () => {
+    // Replace with your actual Telegram group/channel link
+    window.open("https://t.me/ManUtd_Fanz", "_blank");
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", toggleVisibility);
+    return () => window.removeEventListener("scroll", toggleVisibility);
+  }, []);
+
+  return (
+    <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
+      {/* Telegram button with tooltip */}
+      <Tooltip text="Join our Telegram channel" position="left">
+        <button
+          onClick={openTelegram}
+          className="p-3 rounded-full bg-[#0088cc] text-white shadow-lg hover:bg-[#0099dd] transition-all"
+          aria-label="Join our Telegram"
+        >
+          <Send size={24} className="fill-current" />
+        </button>
+      </Tooltip>
+
+      {/* Back to top button with tooltip */}
+      <Tooltip text="Back to top" position="left">
+        <button
+          onClick={scrollToTop}
+          className={`p-3 rounded-full bg-[#002157] text-white shadow-lg transition-opacity hover:bg-blue-800 ${
+            isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+          aria-label="Back to top"
+        >
+          <ArrowUp size={24} />
+        </button>
+      </Tooltip>
+    </div>
+  );
+};
 
 // Adsterra Native Banner Component
 const AdsterraNativeBanner: React.FC = () => {
@@ -207,7 +308,7 @@ const MatchItem: React.FC<{ match: Match }> = ({ match }) => (
         <span className="text-gray-600/70 text-sm block mb-4 pl-1">
           {match.tournament}
         </span>
-        <div className="flex md:gap-16 sm:gap-12 gap-8 p-2">
+        <div className="flex md:gap-16 sm:gap-12 gap-8 px-2">
           <div className="flex items-center">
             <button className="text-gray-400 hover:text-[#002157]">
               <Star size={22} />
@@ -301,6 +402,11 @@ const HomePage: React.FC = () => {
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  const openTelegram = () => {
+    // Replace with your actual Telegram group/channel link
+    window.open("https://t.me/ManUtd_Fanz", "_blank");
   };
 
   const showToast = (
@@ -648,7 +754,7 @@ const HomePage: React.FC = () => {
         {/* Header Section */}
         <div className="sticky top-0 z-10">
           <div className="max-w-[750px] bg-[#002157] mx-auto">
-            <header className="px-4 py-3">
+            <header className="px-4 py-1 md:py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h1 className="text-white text-lg">Live sports</h1>
@@ -674,7 +780,7 @@ const HomePage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="text-white">
+                  <button className="text-white" onClick={openTelegram}>
                     <span className="sr-only">Telegram</span>
                     <Send size={20} className="fill-current" />
                   </button>
@@ -698,12 +804,12 @@ const HomePage: React.FC = () => {
 
           <div className="max-w-[750px] bg-white mx-auto">
             <nav>
-              <div className="flex justify-center px-2 py-2">
+              <div className="flex justify-center px-2 py-1">
                 {sports.map((sport) => (
                   <button
                     key={sport.name}
                     onClick={() => setSelectedSport(sport.name)}
-                    className={`flex items-center gap-2 px-4 py-2 flex-grow basis-0 justify-center ${
+                    className={`flex items-center gap-2 px-4 py-1 flex-grow basis-0 justify-center ${
                       selectedSport === sport.name && selectedSport
                         ? "text-[#002157] border-b-2 border-[#002157]"
                         : "text-gray-600"
@@ -849,7 +955,7 @@ const HomePage: React.FC = () => {
                     {matches.finished.map((match) => (
                       <div
                         key={match.id}
-                        className="bg-white p-4 hover:cursor-pointer border-b border-gray-100"
+                        className="bg-white p-2 hover:cursor-pointer border-b border-gray-100"
                         // onClick={() => window.location.href = match.eventUrl}
                         onClick={() => {
                           // Create a slug with team names
@@ -868,7 +974,7 @@ const HomePage: React.FC = () => {
                             <span className="text-gray-600/70 text-sm block mb-4 pl-1">
                               {match.tournament}
                             </span>
-                            <div className="flex md:gap-16 sm:gap-12 gap-8">
+                            <div className="flex md:gap-16 sm:gap-12 gap-8 ">
                               <div className="flex items-center">
                                 <button className="text-gray-400 hover:text-[#002157]">
                                   <Star size={18} />
@@ -926,6 +1032,9 @@ const HomePage: React.FC = () => {
             onClose={() => setToast(null)}
           />
         )}
+
+        {/* Add the floating buttons */}
+        <FloatingButtons />
       </div>
     </div>
   );
