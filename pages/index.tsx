@@ -1034,7 +1034,7 @@ const HomePage: React.FC = () => {
         )}
 
         {/* Add the floating buttons */}
-        <FloatingButtons />
+        {/* <FloatingButtons /> */}
       </div>
     </div>
   );
