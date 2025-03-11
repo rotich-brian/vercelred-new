@@ -9,13 +9,10 @@ import {
   User,
   ArrowUp,
 } from "lucide-react";
-// Import the telegram icon properly
-import { FaUser, FaBullhorn } from "react-icons/fa";
-// For TypeScript compatibility
-import { FaTelegram } from "react-icons/fa";
 
 import Head from "next/head";
 import React from "react";
+import Image from "next/image";
 
 interface ToastProps {
   message: string;
@@ -237,6 +234,31 @@ interface TeamLogoProps {
   className?: string;
 }
 
+// const TeamLogo: React.FC<TeamLogoProps> = ({
+//   logoUrl,
+//   teamName,
+//   className = "w-5 h-5 mr-2",
+// }) => {
+//   const [hasError, setHasError] = React.useState<boolean>(false);
+
+//   const handleError = (): void => {
+//     setHasError(true);
+//   };
+
+//   return hasError ? (
+//     <FallbackLogo teamName={teamName} />
+//   ) : (
+//     <div className="flex items-center justify-center overflow-hidden">
+//       <img
+//         src={logoUrl}
+//         alt={`${teamName} logo`}
+//         className={`object-contain ${className}`}
+//         onError={handleError}
+//       />
+//     </div>
+//   );
+// };
+
 const TeamLogo: React.FC<TeamLogoProps> = ({
   logoUrl,
   teamName,
@@ -244,19 +266,21 @@ const TeamLogo: React.FC<TeamLogoProps> = ({
 }) => {
   const [hasError, setHasError] = React.useState<boolean>(false);
 
-  const handleError = (): void => {
-    setHasError(true);
-  };
-
   return hasError ? (
     <FallbackLogo teamName={teamName} />
   ) : (
-    <div className="flex items-center justify-center overflow-hidden">
-      <img
+    <div
+      className="flex items-center justify-center overflow-hidden relative"
+      style={{ width: 20, height: 20 }}
+    >
+      <Image
         src={logoUrl}
         alt={`${teamName} logo`}
-        className={`object-contain ${className}`}
-        onError={handleError}
+        fill
+        sizes="20px"
+        className="object-contain"
+        onError={() => setHasError(true)}
+        priority={false}
       />
     </div>
   );
@@ -679,16 +703,19 @@ const HomePage: React.FC = () => {
       <Head>
         <meta charSet="utf-8" />
         <title>
-          Livesports808 - Live Sport Streams, Watch Football Live, NBA and More
+          Livesports808 - Score 808 Live Streams, Watch Football, NBA, and More
         </title>
+        <meta property="og:site_name" content="Livesports808" />
         <meta
           name="description"
-          content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages."
+          content="Watch live sports with Livesports 808 & Score808. Stream 100+ football, NBA, and more matches in over 10 languages — fast, free, and reliable."
         />
+
         <meta
           name="keywords"
-          content="Live Sport Streams, Football Live, Livesports088, Livesports808, Score808, sports streaming free"
+          content="Score 808, score808, Live Sport Streams, Football Live, Livesports808, Livesports 808,  sports streaming free"
         />
+
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, user-scalable=1"
@@ -737,6 +764,7 @@ const HomePage: React.FC = () => {
           href="/favicon-16x16.png"
         />
         <link rel="manifest" href="/site.webmanifest" />
+        <link rel="canonical" href="https://livesports808.top" />
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta
@@ -748,6 +776,23 @@ const HomePage: React.FC = () => {
           content="Livesports808 is the comprehensive sports TV online, offering 100+ live schedules for football & basketball matches in over 10 languages."
         />
         <meta name="twitter:image" content="/android-chrome-512x512.png" />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Livesports808",
+              url: "https://livesports808.top",
+              // "potentialAction": {
+              //   "@type": "SearchAction",
+              //   "target": "https://livesports808.top/search?q={search_term_string}",
+              //   "query-input": "required name=search_term_string"
+              // }
+            }),
+          }}
+        />
       </Head>
 
       <div className="max-w-[750px] mx-auto">
