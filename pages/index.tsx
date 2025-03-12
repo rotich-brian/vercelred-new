@@ -307,6 +307,44 @@ const HomePage: React.FC<HomePageProps> = ({
   const sliderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Make sure initial data from server is correctly processed
+    if (initialMatches) {
+      // Convert string dates back to Date objects for client-side processing
+      const processInitialMatches = (matchGroup: Match[]): Match[] => {
+        return matchGroup.map((match) => ({
+          ...match,
+          time: new Date(match.time),
+          // Refresh status with local time calculation
+          ...getMatchStatus(new Date(match.time)),
+        }));
+      };
+
+      const processedByDate: Record<string, Match[]> = {};
+      Object.keys(initialMatches.byDate).forEach((dateKey) => {
+        processedByDate[dateKey] = processInitialMatches(
+          initialMatches.byDate[dateKey]
+        );
+      });
+
+      setMatches({
+        live: processInitialMatches(initialMatches.live),
+        scheduled: processInitialMatches(initialMatches.scheduled),
+        finished: processInitialMatches(initialMatches.finished),
+        byDate: processedByDate,
+      });
+
+      setLiveGames(
+        processInitialMatches([
+          ...initialMatches.live,
+          ...initialMatches.scheduled.filter((m) =>
+            isMatchToday(new Date(m.time))
+          ),
+        ]).slice(0, 10)
+      );
+    }
+  }, [initialMatches]);
+
+  useEffect(() => {
     console.log("Initial Matches:", initialMatches);
     console.log("Initial Live Games:", initialLiveGames);
   }, []); // Empty dependency array makes it run only on mount
@@ -348,67 +386,14 @@ const HomePage: React.FC<HomePageProps> = ({
     sliderRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  // const formatMatchTime = (utcTime: string | Date): string => {
-  //   let matchTime: Date;
-
-  //   if (utcTime instanceof Date) {
-  //     matchTime = new Date(utcTime);
-  //   } else if (typeof utcTime === "string") {
-  //     const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-  //     matchTime = new Date(utcTimeISO);
-
-  //     if (isNaN(matchTime.getTime())) {
-  //       console.error("Invalid date format:", utcTime);
-  //       return "Invalid time";
-  //     }
-  //   } else {
-  //     console.error("Expected a string or Date but received:", typeof utcTime);
-  //     return "Invalid time";
-  //   }
-
-  //   return matchTime.toLocaleTimeString([], {
-  //     hour: "2-digit",
-  //     minute: "2-digit",
-  //     hour12: false,
-  //   });
-  // };
-
-  // const formatStatusTime = (utcTime: string | Date): Date => {
-  //   let matchTime: Date;
-
-  //   if (utcTime instanceof Date) {
-  //     matchTime = new Date(utcTime);
-  //   } else if (typeof utcTime === "string") {
-  //     const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-  //     matchTime = new Date(utcTimeISO);
-
-  //     if (isNaN(matchTime.getTime())) {
-  //       console.error("Invalid date format:", utcTime);
-  //       return matchTime;
-  //     }
-  //   } else {
-  //     console.error("Expected a string or Date but received:", typeof utcTime);
-  //     return new Date();
-  //   }
-
-  //   // Return the date in local time (don't adjust for timezone)
-  //   return matchTime;
-  // };
-
   const formatMatchTime = (utcTime: string | Date): string => {
     let matchTime: Date;
 
     if (utcTime instanceof Date) {
       matchTime = utcTime;
     } else if (typeof utcTime === "string") {
-      // Check if the string is already in ISO format
-      if (utcTime.includes("T") && utcTime.includes("Z")) {
-        matchTime = new Date(utcTime);
-      } else {
-        // Only convert if not already in ISO format
-        const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-        matchTime = new Date(utcTimeISO);
-      }
+      // Use a consistent approach to parse dates
+      matchTime = new Date(utcTime);
 
       if (isNaN(matchTime.getTime())) {
         console.error("Invalid date format:", utcTime);
@@ -419,6 +404,7 @@ const HomePage: React.FC<HomePageProps> = ({
       return "Invalid time";
     }
 
+    // Use the user's local timezone consistently
     return matchTime.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -453,6 +439,7 @@ const HomePage: React.FC<HomePageProps> = ({
     return matchTime;
   };
 
+  // In getMatchStatus function on client side
   const getMatchStatus = (matchTime: string | Date): MatchStatus => {
     let statusTime: Date;
     statusTime = formatStatusTime(matchTime);
@@ -1061,7 +1048,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
         matchTime = new Date();
       }
 
-      // Define helper functions for server-side
+      // In getServerSideProps (server-side)
       const getMatchStatus = (matchTime: Date): MatchStatus => {
         const now = new Date();
         const gameTime = new Date(matchTime);
@@ -1070,13 +1057,17 @@ export const getServerSideProps: GetServerSideProps = async () => {
         );
 
         if (diffInMinutes < 0) {
+          // Ensure consistent formatting regardless of environment
           return {
             status: "Scheduled",
-            display: matchTime.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            }),
+            // Format dates consistently using explicit UTC methods
+            display: `${matchTime
+              .getUTCHours()
+              .toString()
+              .padStart(2, "0")}:${matchTime
+              .getUTCMinutes()
+              .toString()
+              .padStart(2, "0")}`,
           };
         } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
           return { status: "Live", display: `Live` };
