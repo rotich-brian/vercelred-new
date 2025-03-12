@@ -281,6 +281,7 @@ const TeamLogo: React.FC<TeamLogoProps> = ({
         className="object-contain"
         onError={() => setHasError(true)}
         priority={false}
+        unoptimized
       />
     </div>
   );
