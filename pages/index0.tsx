@@ -1,4 +1,3 @@
-import { GetServerSideProps } from "next";
 import { useState, useRef, useEffect, MouseEvent } from "react";
 import {
   Star,
@@ -8,7 +7,7 @@ import {
   Send,
   Circle,
   User,
-  MoreHorizontal,
+  ArrowUp,
 } from "lucide-react";
 
 import Head from "next/head";
@@ -60,6 +59,103 @@ interface RawMatch {
   homeTeamLogo: string;
   awayTeamLogo: string;
 }
+
+// Add this Tooltip component
+const Tooltip: React.FC<{
+  text: string;
+  children: React.ReactNode;
+  position?: "top" | "left" | "right" | "bottom";
+}> = ({ text, children, position = "left" }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  const positionClasses = {
+    top: "bottom-full mb-2 left-1/2 transform -translate-x-1/2",
+    bottom: "top-full mt-2 left-1/2 transform -translate-x-1/2",
+    left: "right-full mr-2 top-1/2 transform -translate-y-1/2",
+    right: "left-full ml-2 top-1/2 transform -translate-y-1/2",
+  };
+
+  return (
+    <div className="relative flex items-center justify-center">
+      <div
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        onFocus={() => setIsVisible(true)}
+        onBlur={() => setIsVisible(false)}
+      >
+        {children}
+      </div>
+
+      {isVisible && (
+        <div
+          className={`absolute ${positionClasses[position]} whitespace-nowrap bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-90 z-50 pointer-events-none transition-opacity duration-200`}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FloatingButtons: React.FC = () => {
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+
+  // Show back to top button when page is scrolled down
+  const toggleVisibility = () => {
+    if (window.pageYOffset > 300) {
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
+  };
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // Open Telegram channel/group
+  const openTelegram = () => {
+    // Replace with your actual Telegram group/channel link
+    window.open("https://t.me/futball_liveapp", "_blank");
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", toggleVisibility);
+    return () => window.removeEventListener("scroll", toggleVisibility);
+  }, []);
+
+  return (
+    <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
+      {/* Telegram button with tooltip */}
+      <Tooltip text="Join our Telegram channel" position="left">
+        <button
+          onClick={openTelegram}
+          className="p-3 rounded-full bg-[#0088cc] text-white shadow-lg hover:bg-[#0099dd] transition-all"
+          aria-label="Join our Telegram"
+        >
+          <Send size={24} className="fill-current" />
+        </button>
+      </Tooltip>
+
+      {/* Back to top button with tooltip */}
+      <Tooltip text="Back to top" position="left">
+        <button
+          onClick={scrollToTop}
+          className={`p-3 rounded-full bg-[#002157] text-white shadow-lg transition-opacity hover:bg-blue-800 ${
+            isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+          aria-label="Back to top"
+        >
+          <ArrowUp size={24} />
+        </button>
+      </Tooltip>
+    </div>
+  );
+};
 
 // Adsterra Native Banner Component
 const AdsterraNativeBanner: React.FC = () => {
@@ -179,11 +275,10 @@ const DateSectionHeader: React.FC<{ date: string }> = ({ date }) => {
       dateObj.getMonth() === today.getMonth() &&
       dateObj.getFullYear() === today.getFullYear();
 
-    // Format: "Today" or "Thursday, 13 Mar 2025"
-    // Use a specific locale and explicit formatting options to ensure server/client consistency
+    // Format: "Today" or "Tuesday, 5 Mar 2025"
     return isToday
       ? "Today"
-      : dateObj.toLocaleDateString("en-US", {
+      : dateObj.toLocaleDateString("en-GB", {
           weekday: "long",
           day: "numeric",
           month: "short",
@@ -192,7 +287,7 @@ const DateSectionHeader: React.FC<{ date: string }> = ({ date }) => {
   })();
 
   return (
-    <div className="sticky top-[76px] md:top-[92px] bg-gradient-to-r from-blue-50 to-white py-3 px-4 border-y border-blue-100/50 z-[5]">
+    <div className="sticky top-[114px] bg-gradient-to-r from-blue-50 to-white py-3 px-4 border-y border-blue-100/50 z-[5]">
       <h2 className="text-sm font-semibold text-blue-900">{formattedDate}</h2>
     </div>
   );
@@ -275,30 +370,24 @@ const MatchItem: React.FC<{ match: Match }> = ({ match }) => (
   </div>
 );
 
-interface HomePageProps {
-  initialMatches: MatchesState;
-  initialLiveGames: Match[];
-}
-
-// Update the component to accept props
-const HomePage: React.FC<HomePageProps> = ({
-  initialMatches,
-  initialLiveGames,
-}) => {
+// Main HomePage Component
+const HomePage: React.FC = () => {
   const [selectedSport, setSelectedSport] = useState<
-    "Football" | "Basketball" | "Others" | null
-  >(null);
-
+    "Football" | "Basketball" | "Others"
+  >("Football");
   const [language, setLanguage] = useState<string>("English");
+  const [matches, setMatches] = useState<MatchesState>({
+    live: [],
+    scheduled: [],
+    finished: [],
+    byDate: {},
+  });
 
-  // Initialize state with the provided props
-  const [matches, setMatches] = useState<MatchesState>(initialMatches);
-  const [liveGames, setLiveGames] = useState<Match[]>(initialLiveGames);
-
+  const [liveGames, setLiveGames] = useState<Match[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [startX, setStartX] = useState<number>(0);
   const [scrollLeft, setScrollLeft] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(false); // Changed from true to false
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -306,10 +395,14 @@ const HomePage: React.FC<HomePageProps> = ({
   } | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    console.log("Initial Matches:", initialMatches);
-    console.log("Initial Live Games:", initialLiveGames);
-  }, []); // Empty dependency array makes it run only on mount
+  // Helper Functions
+  const formatDisplayDate = (date: Date): string => {
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   const openTelegram = () => {
     // Replace with your actual Telegram group/channel link
@@ -348,67 +441,14 @@ const HomePage: React.FC<HomePageProps> = ({
     sliderRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  // const formatMatchTime = (utcTime: string | Date): string => {
-  //   let matchTime: Date;
-
-  //   if (utcTime instanceof Date) {
-  //     matchTime = new Date(utcTime);
-  //   } else if (typeof utcTime === "string") {
-  //     const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-  //     matchTime = new Date(utcTimeISO);
-
-  //     if (isNaN(matchTime.getTime())) {
-  //       console.error("Invalid date format:", utcTime);
-  //       return "Invalid time";
-  //     }
-  //   } else {
-  //     console.error("Expected a string or Date but received:", typeof utcTime);
-  //     return "Invalid time";
-  //   }
-
-  //   return matchTime.toLocaleTimeString([], {
-  //     hour: "2-digit",
-  //     minute: "2-digit",
-  //     hour12: false,
-  //   });
-  // };
-
-  // const formatStatusTime = (utcTime: string | Date): Date => {
-  //   let matchTime: Date;
-
-  //   if (utcTime instanceof Date) {
-  //     matchTime = new Date(utcTime);
-  //   } else if (typeof utcTime === "string") {
-  //     const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-  //     matchTime = new Date(utcTimeISO);
-
-  //     if (isNaN(matchTime.getTime())) {
-  //       console.error("Invalid date format:", utcTime);
-  //       return matchTime;
-  //     }
-  //   } else {
-  //     console.error("Expected a string or Date but received:", typeof utcTime);
-  //     return new Date();
-  //   }
-
-  //   // Return the date in local time (don't adjust for timezone)
-  //   return matchTime;
-  // };
-
   const formatMatchTime = (utcTime: string | Date): string => {
     let matchTime: Date;
 
     if (utcTime instanceof Date) {
-      matchTime = utcTime;
+      matchTime = new Date(utcTime);
     } else if (typeof utcTime === "string") {
-      // Check if the string is already in ISO format
-      if (utcTime.includes("T") && utcTime.includes("Z")) {
-        matchTime = new Date(utcTime);
-      } else {
-        // Only convert if not already in ISO format
-        const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-        matchTime = new Date(utcTimeISO);
-      }
+      const utcTimeISO = utcTime.replace(" ", "T") + "Z";
+      matchTime = new Date(utcTimeISO);
 
       if (isNaN(matchTime.getTime())) {
         console.error("Invalid date format:", utcTime);
@@ -430,26 +470,21 @@ const HomePage: React.FC<HomePageProps> = ({
     let matchTime: Date;
 
     if (utcTime instanceof Date) {
-      matchTime = utcTime;
+      matchTime = new Date(utcTime);
     } else if (typeof utcTime === "string") {
-      // Check if the string is already in ISO format
-      if (utcTime.includes("T") && utcTime.includes("Z")) {
-        matchTime = new Date(utcTime);
-      } else {
-        // Only convert if not already in ISO format
-        const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-        matchTime = new Date(utcTimeISO);
-      }
+      const utcTimeISO = utcTime.replace(" ", "T") + "Z";
+      matchTime = new Date(utcTimeISO);
 
       if (isNaN(matchTime.getTime())) {
         console.error("Invalid date format:", utcTime);
-        return new Date();
+        return matchTime;
       }
     } else {
       console.error("Expected a string or Date but received:", typeof utcTime);
       return new Date();
     }
 
+    // Return the date in local time (don't adjust for timezone)
     return matchTime;
   };
 
@@ -472,32 +507,23 @@ const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
-  const getMatchDateKey = (matchTime: string | Date): string => {
-    // Convert matchTime to a Date object if it's a string
-    const matchTimeDate =
-      typeof matchTime === "string" ? new Date(matchTime) : matchTime;
-
+  const getMatchDateKey = (matchTime: Date): string => {
     // Format for display: DD-MM-YYYY using local time
-    const day = String(matchTimeDate.getDate()).padStart(2, "0");
-    const month = String(matchTimeDate.getMonth() + 1).padStart(2, "0");
-    const year = matchTimeDate.getFullYear();
+    const day = String(matchTime.getDate()).padStart(2, "0");
+    const month = String(matchTime.getMonth() + 1).padStart(2, "0");
+    const year = matchTime.getFullYear();
 
     return `${day}-${month}-${year}`;
   };
 
-  // Update the isMatchToday function to handle both Date objects and ISO date strings
-  const isMatchToday = (matchTime: string | Date): boolean => {
+  const isMatchToday = (matchTime: Date): boolean => {
     const now = new Date();
-
-    // Convert matchTime to a Date object if it's a string
-    const matchTimeDate =
-      typeof matchTime === "string" ? new Date(matchTime) : matchTime;
 
     // Compare local dates
     return (
-      matchTimeDate.getDate() === now.getDate() &&
-      matchTimeDate.getMonth() === now.getMonth() &&
-      matchTimeDate.getFullYear() === now.getFullYear()
+      matchTime.getDate() === now.getDate() &&
+      matchTime.getMonth() === now.getMonth() &&
+      matchTime.getFullYear() === now.getFullYear()
     );
   };
 
@@ -571,10 +597,12 @@ const HomePage: React.FC<HomePageProps> = ({
         byDate[dateKey].push(match);
       });
 
-      setMatches({ live, scheduled, finished, byDate });
+      // For live games slider, include live and today's scheduled matches
       setLiveGames(
         [...live, ...scheduled.filter((m) => isMatchToday(m.time))].slice(0, 10)
       );
+
+      setMatches({ live, scheduled, finished, byDate });
 
       if (!showLoading) {
         showToast("Events refresh success");
@@ -594,8 +622,7 @@ const HomePage: React.FC<HomePageProps> = ({
 
   // Update the statusInterval to include byDate in the state update
   useEffect(() => {
-    // No need to fetch data immediately on mount since we have initial data
-    // Just set up intervals for refreshes
+    fetchMatches(true);
 
     const statusInterval = setInterval(() => {
       setMatches((prev) => ({
@@ -611,6 +638,7 @@ const HomePage: React.FC<HomePageProps> = ({
           ...match,
           ...getMatchStatus(match.time),
         })),
+        // Include the byDate property from previous state
         byDate: prev.byDate,
       }));
     }, 60000);
@@ -628,7 +656,7 @@ const HomePage: React.FC<HomePageProps> = ({
   const sports = [
     { name: "Football" as const, icon: "⚽" },
     { name: "Basketball" as const, icon: "🏀" },
-    { name: "Others" as const, icon: <MoreHorizontal size={18} /> },
+    { name: "Others" as const, icon: "•••" },
   ];
 
   const languages = [
@@ -733,6 +761,11 @@ const HomePage: React.FC<HomePageProps> = ({
               "@type": "WebSite",
               name: "Livesports808",
               url: "https://livesports808.top",
+              // "potentialAction": {
+              //   "@type": "SearchAction",
+              //   "target": "https://livesports808.top/search?q={search_term_string}",
+              //   "query-input": "required name=search_term_string"
+              // }
             }),
           }}
         />
@@ -790,20 +823,20 @@ const HomePage: React.FC<HomePageProps> = ({
             </header>
           </div>
 
-          <div className="max-w-[750px] bg-[#f8f8f8] mx-auto">
+          <div className="max-w-[750px] bg-white mx-auto">
             <nav>
-              <div className="flex justify-evenly px-2 py-1">
+              <div className="flex justify-center px-2 py-1">
                 {sports.map((sport) => (
                   <button
                     key={sport.name}
                     onClick={() => setSelectedSport(sport.name)}
-                    className={`inline-flex items-center gap-2 px-4 py-1 justify-center border-b-2 ${
+                    className={`flex items-center gap-2 px-4 py-1 flex-grow basis-0 justify-center ${
                       selectedSport === sport.name && selectedSport
-                        ? "text-black text-sm font-bold border-[#002157] w-fit"
-                        : "text-gray-600 text-sm font-bold border-transparent"
+                        ? "text-[#002157] border-b-2 border-[#002157]"
+                        : "text-gray-600"
                     }`}
                   >
-                    {sport.icon}
+                    <span>{sport.icon}</span>
                     <span>{sport.name}</span>
                   </button>
                 ))}
@@ -1020,189 +1053,12 @@ const HomePage: React.FC<HomePageProps> = ({
             onClose={() => setToast(null)}
           />
         )}
+
+        {/* Add the floating buttons */}
+        {/* <FloatingButtons /> */}
       </div>
     </div>
   );
 };
 
 export default HomePage;
-
-export const getServerSideProps: GetServerSideProps = async () => {
-  // Fetch data on the server side
-  try {
-    const response = await fetch(
-      "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch data");
-    }
-
-    const data: ApiResponse = await response.json();
-
-    // Process the fetched data
-    const processedMatches: Match[] = data.today.map((match) => {
-      let matchTime: Date;
-
-      try {
-        if (match.time.includes(" ")) {
-          const [datePart, timePart] = match.time.split(" ");
-          matchTime = new Date(`${datePart}T${timePart}Z`);
-        } else {
-          matchTime = new Date(match.time);
-        }
-
-        if (isNaN(matchTime.getTime())) {
-          console.error("Invalid date format:", match.time);
-          matchTime = new Date();
-        }
-      } catch (e) {
-        console.error("Error parsing date:", match.time, e);
-        matchTime = new Date();
-      }
-
-      // Define helper functions for server-side
-      const getMatchStatus = (matchTime: Date): MatchStatus => {
-        const now = new Date();
-        const gameTime = new Date(matchTime);
-        const diffInMinutes = Math.floor(
-          (now.getTime() - gameTime.getTime()) / (1000 * 60) + 1
-        );
-
-        if (diffInMinutes < 0) {
-          return {
-            status: "Scheduled",
-            display: matchTime.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            }),
-          };
-        } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
-          return { status: "Live", display: `Live` };
-        } else {
-          return { status: "FT", display: "FINISHED" };
-        }
-      };
-
-      return {
-        id: match.id,
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
-        tournament: match.competition,
-        ...getMatchStatus(matchTime),
-        time: matchTime,
-        eventUrl: match.eventUrl,
-        homeTeamLogo: match.homeTeamLogo,
-        awayTeamLogo: match.awayTeamLogo,
-      };
-    });
-
-    const sortedMatches = processedMatches.sort(
-      (a, b) => a.time.getTime() - b.time.getTime()
-    );
-
-    const live = sortedMatches.filter((m) => m.status === "Live");
-    const scheduled = sortedMatches.filter((m) => m.status === "Scheduled");
-    const finished = sortedMatches.filter((m) => m.status === "FT");
-
-    // Helper function to check if a match is today
-    const isMatchToday = (matchTime: Date): boolean => {
-      const now = new Date();
-      return (
-        matchTime.getDate() === now.getDate() &&
-        matchTime.getMonth() === now.getMonth() &&
-        matchTime.getFullYear() === now.getFullYear()
-      );
-    };
-
-    // Helper function to get date key
-    const getMatchDateKey = (matchTime: Date): string => {
-      const day = String(matchTime.getDate()).padStart(2, "0");
-      const month = String(matchTime.getMonth() + 1).padStart(2, "0");
-      const year = matchTime.getFullYear();
-      return `${day}-${month}-${year}`;
-    };
-
-    // Group scheduled matches by date
-    const byDate: Record<string, Match[]> = {};
-
-    scheduled.forEach((match) => {
-      // Skip today's matches as they're shown separately
-      if (isMatchToday(match.time)) return;
-
-      const dateKey = getMatchDateKey(match.time);
-      if (!byDate[dateKey]) {
-        byDate[dateKey] = [];
-      }
-      byDate[dateKey].push(match);
-    });
-
-    // Live games for slider
-    const liveGames = [
-      ...live,
-      ...scheduled.filter((m) => isMatchToday(m.time)),
-    ].slice(0, 10);
-
-    // Before returning, convert all Date objects to strings
-    const serializableMatches = processedMatches.map((match) => ({
-      ...match,
-      time: match.time.toISOString(), // Convert Date to string
-    }));
-
-    const serializableLive = serializableMatches.filter(
-      (m) => m.status === "Live"
-    );
-    const serializableScheduled = serializableMatches.filter(
-      (m) => m.status === "Scheduled"
-    );
-    const serializableFinished = serializableMatches.filter(
-      (m) => m.status === "FT"
-    );
-
-    // Create serializable byDate object
-    const serializableByDate: Record<string, any[]> = {};
-    Object.keys(byDate).forEach((dateKey) => {
-      serializableByDate[dateKey] = byDate[dateKey].map((match) => ({
-        ...match,
-        time: match.time.toISOString(), // Convert Date to string
-      }));
-    });
-
-    // Also convert dates in liveGames
-    const serializableLiveGames = [
-      ...serializableLive,
-      ...serializableScheduled.filter((m) => {
-        const matchTime = new Date(m.time);
-        return isMatchToday(matchTime);
-      }),
-    ].slice(0, 10);
-
-    return {
-      props: {
-        initialMatches: {
-          live: serializableLive,
-          scheduled: serializableScheduled,
-          finished: serializableFinished,
-          byDate: serializableByDate,
-        },
-        initialLiveGames: serializableLiveGames,
-      },
-    };
-  } catch (error) {
-    console.error("Server-side data fetching error:", error);
-
-    // Return empty initial data in case of error
-    return {
-      props: {
-        initialMatches: {
-          live: [],
-          scheduled: [],
-          finished: [],
-          byDate: {},
-        },
-        initialLiveGames: [],
-      },
-    };
-  }
-};
