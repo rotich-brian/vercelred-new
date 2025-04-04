@@ -61,6 +61,51 @@ interface RawMatch {
   awayTeamLogo: string;
 }
 
+// AdBanner Component
+const AdBanner: React.FC = () => {
+  const adContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Create script for ad options
+    const optionsScript = document.createElement("script");
+    optionsScript.type = "text/javascript";
+    optionsScript.innerHTML = `
+      atOptions = {
+        'key' : '8f03b174bff8e7b46b4bad1450bdaef1',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    `;
+
+    // Create script for ad invocation
+    const invokeScript = document.createElement("script");
+    invokeScript.type = "text/javascript";
+    invokeScript.src =
+      "//www.highperformanceformat.com/8f03b174bff8e7b46b4bad1450bdaef1/invoke.js";
+    invokeScript.async = true;
+
+    // Append scripts
+    if (adContainerRef.current) {
+      document.head.appendChild(optionsScript);
+      adContainerRef.current.appendChild(invokeScript);
+    }
+
+    return () => {
+      // Clean up
+      optionsScript.remove();
+      if (adContainerRef.current) {
+        adContainerRef.current.innerHTML = "";
+      }
+    };
+  }, []);
+
+  return (
+    <div ref={adContainerRef} className="flex justify-center py-3 bg-white" />
+  );
+};
+
 // Adsterra Native Banner Component
 const AdsterraNativeBanner: React.FC = () => {
   const adContainerRef = useRef<HTMLDivElement>(null);
@@ -882,6 +927,9 @@ const HomePage: React.FC<HomePageProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Ad Banner between slider and matches */}
+              <AdBanner />
 
               {/* Today's Live and Scheduled Matches */}
               <div className="space-y-0.4 bg-blue-100/30">
