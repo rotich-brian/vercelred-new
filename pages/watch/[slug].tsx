@@ -53,6 +53,32 @@ interface MatchStatus {
   display: string;
 }
 
+// Adsterra Native Banner Component
+const AdsterraNativeBanner: React.FC = () => {
+  const adContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.setAttribute("data-cfasync", "false");
+    script.src =
+      "//pl19321751.effectiveratecpm.com/fc2cbfb22e260069b1ccff47a6b87e40/invoke.js";
+
+    document.head.appendChild(script);
+
+    return () => {
+      script.remove();
+      if (adContainerRef.current) {
+        adContainerRef.current.innerHTML = "";
+      }
+    };
+  }, []);
+
+  return (
+    <div id="container-fc2cbfb22e260069b1ccff47a6b87e40" ref={adContainerRef} />
+  );
+};
+
 const getMatchStatus = (matchTime: string | Date): MatchStatus => {
   const statusTime = formatStatusTime(matchTime);
   const now = new Date();
@@ -911,6 +937,11 @@ const WatchPage: React.FC<{
                 </svg>
               </button>
             </div>
+          </div>
+
+          {/* Adsterra Native Banner */}
+          <div className="my-6">
+            <AdsterraNativeBanner />
           </div>
 
           {/* Watch LIVE (Related Streams) - Enhanced Grid Layout */}
