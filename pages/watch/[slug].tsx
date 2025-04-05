@@ -250,7 +250,11 @@ const WatchPage: React.FC<{
   // Function to open HD stream in a new tab
   const openHDStream = () => {
     if (match && match.urls.length > 0) {
-      window.open("https://chilsihooveek.net/4/8916857", "_blank");
+      window.open(
+        "https://www.effectiveratecpm.com/bswczp0n?key=1b85d7f54ff19004655652b23be0b583",
+        "_blank"
+      );
+      // https://chilsihooveek.net/4/8916857
     }
   };
 
