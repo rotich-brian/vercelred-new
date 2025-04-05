@@ -79,21 +79,50 @@ const AdsterraNativeBanner: React.FC = () => {
   );
 };
 
+// const getMatchStatus = (matchTime: string | Date): MatchStatus => {
+//   const statusTime = formatStatusTime(matchTime);
+//   const now = new Date();
+//   const gameTime = new Date(statusTime);
+//   const diffInMinutes = Math.floor(
+//     (now.getTime() - gameTime.getTime()) / (1000 * 60) + 1
+//   );
+
+//   if (diffInMinutes < 0) {
+//     return { status: "Scheduled", display: formatMatchTime(matchTime) };
+//   } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
+//     return { status: "Live", display: "LIVE" };
+//   } else {
+//     return { status: "FT", display: "FINISHED" };
+//   }
+// };
+
+// Simplified time handling
 const getMatchStatus = (matchTime: string | Date): MatchStatus => {
-  const statusTime = formatStatusTime(matchTime);
+  const gameTime = matchTime instanceof Date ? matchTime : new Date(matchTime);
+
+  if (isNaN(gameTime.getTime())) {
+    console.error("Invalid date format:", matchTime);
+    return { status: "Scheduled", display: "Invalid time" };
+  }
+
   const now = new Date();
-  const gameTime = new Date(statusTime);
   const diffInMinutes = Math.floor(
-    (now.getTime() - gameTime.getTime()) / (1000 * 60) + 1
+    (now.getTime() - gameTime.getTime()) / (1000 * 60)
   );
 
   if (diffInMinutes < 0) {
-    return { status: "Scheduled", display: formatMatchTime(matchTime) };
-  } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
+    return {
+      status: "Scheduled",
+      display: gameTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }),
+    };
+  } else if (diffInMinutes <= 120) {
     return { status: "Live", display: "LIVE" };
-  } else {
-    return { status: "FT", display: "FINISHED" };
   }
+  return { status: "FT", display: "FINISHED" };
 };
 
 // Time formatting utilities

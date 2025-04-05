@@ -27,13 +27,25 @@ class MyDocument extends Document {
           />
 
           {/* Profitable CPM Rate Script */}
-          {/* <script
+          <script
             async
             src="//pl25596196.profitablecpmrate.com/33/44/7b/33447b828b53f96077881ee158b6b1a8.js"
+          ></script>
+
+          {/* Effective Rate CPM Script - Itrend Social Bar */}
+          {/* <script
+            type="text/javascript"
+            src="//pl19567778.effectiveratecpm.com/88/1f/cb/881fcb4c0fb57b122184be197c17ae56.js"
           ></script> */}
 
-          {/* Shebudriftaiter Script */}
+          {/* Effective Rate CPM Script - Itrend Popunder */}
           <script
+            async
+            src="//pl19643500.effectiveratecpm.com/22/5a/ee/225aee6de36429ed1b2ae90624cca61d.js"
+          ></script>
+
+          {/* Shebudriftaiter Script */}
+          {/* <script
             dangerouslySetInnerHTML={{
               __html: `
                 (function(s, u, z, p) {
@@ -43,7 +55,7 @@ class MyDocument extends Document {
                 })(document.createElement('script'), 'https://shebudriftaiter.net/tag.min.js', 8916172, document.body || document.documentElement);
               `,
             }}
-          />
+          /> */}
         </Head>
         <body>
           <Main />
