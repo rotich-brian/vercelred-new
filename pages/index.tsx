@@ -929,7 +929,7 @@ const HomePage: React.FC<HomePageProps> = ({
               )}
 
               {/* Ad Banner between slider and matches */}
-              <AdBanner />
+              {/* <AdBanner /> */}
 
               {/* Today's Live and Scheduled Matches */}
               <div className="space-y-0.4 bg-blue-100/30">

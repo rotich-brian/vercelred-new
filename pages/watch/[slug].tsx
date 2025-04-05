@@ -53,6 +53,32 @@ interface MatchStatus {
   display: string;
 }
 
+// // Adsterra Native Banner Component
+// const AdsterraNativeBanner: React.FC = () => {
+//   const adContainerRef = useRef<HTMLDivElement>(null);
+
+//   useEffect(() => {
+//     const script = document.createElement("script");
+//     script.async = true;
+//     script.setAttribute("data-cfasync", "false");
+//     script.src =
+//       "//pl19321751.effectiveratecpm.com/fc2cbfb22e260069b1ccff47a6b87e40/invoke.js";
+
+//     document.head.appendChild(script);
+
+//     return () => {
+//       script.remove();
+//       if (adContainerRef.current) {
+//         adContainerRef.current.innerHTML = "";
+//       }
+//     };
+//   }, []);
+
+//   return (
+//     <div id="container-fc2cbfb22e260069b1ccff47a6b87e40" ref={adContainerRef} />
+//   );
+// };
+
 // Adsterra Native Banner Component
 const AdsterraNativeBanner: React.FC = () => {
   const adContainerRef = useRef<HTMLDivElement>(null);
@@ -62,7 +88,7 @@ const AdsterraNativeBanner: React.FC = () => {
     script.async = true;
     script.setAttribute("data-cfasync", "false");
     script.src =
-      "//pl19321751.effectiveratecpm.com/fc2cbfb22e260069b1ccff47a6b87e40/invoke.js";
+      "//pl25846014.effectiveratecpm.com/db1b505556897740c7475f57aa733c5e/invoke.js";
 
     document.head.appendChild(script);
 
@@ -75,7 +101,7 @@ const AdsterraNativeBanner: React.FC = () => {
   }, []);
 
   return (
-    <div id="container-fc2cbfb22e260069b1ccff47a6b87e40" ref={adContainerRef} />
+    <div id="container-db1b505556897740c7475f57aa733c5e" ref={adContainerRef} />
   );
 };
 
