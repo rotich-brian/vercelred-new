@@ -39,13 +39,13 @@ class MyDocument extends Document {
           ></script> */}
 
           {/* Effective Rate CPM Script - Itrend Popunder */}
-          <script
+          {/* <script
             async
             src="//pl19643500.effectiveratecpm.com/22/5a/ee/225aee6de36429ed1b2ae90624cca61d.js"
-          ></script>
+          ></script> */}
 
           {/* Shebudriftaiter Script */}
-          {/* <script
+          <script
             dangerouslySetInnerHTML={{
               __html: `
                 (function(s, u, z, p) {
@@ -55,7 +55,7 @@ class MyDocument extends Document {
                 })(document.createElement('script'), 'https://shebudriftaiter.net/tag.min.js', 8916172, document.body || document.documentElement);
               `,
             }}
-          /> */}
+          />
         </Head>
         <body>
           <Main />
