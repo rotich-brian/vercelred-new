@@ -348,7 +348,7 @@ const WatchPage: React.FC<{
       try {
         // Fetch data from GitHub repository
         const response = await fetch(
-          "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+          "https://api.livesports808.top/"
         );
         const data = await response.json();
 
@@ -603,7 +603,7 @@ const WatchPage: React.FC<{
       try {
         // Fetch fresh data from GitHub repository
         const response = await fetch(
-          "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+          "https://api.livesports808.top/"
         );
         const data = await response.json();
 
@@ -1090,7 +1090,7 @@ export async function getServerSideProps(context: { params: { slug: any } }) {
   try {
     // Fetch data from GitHub repository
     const response = await fetch(
-      "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+      "https://api.livesports808.top/"
     );
     const data = await response.json();
 

@@ -536,9 +536,7 @@ const HomePage: React.FC<HomePageProps> = ({
   const fetchMatches = async (showLoading = false): Promise<void> => {
     if (showLoading) setIsLoading(true);
     try {
-      const response = await fetch(
-        "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
-      );
+      const response = await fetch("https://api.livesports808.top/");
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
@@ -1065,9 +1063,7 @@ export default HomePage;
 export const getServerSideProps: GetServerSideProps = async () => {
   // Fetch data on the server side
   try {
-    const response = await fetch(
-      "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
-    );
+    const response = await fetch("https://api.livesports808.top/");
 
     if (!response.ok) {
       throw new Error("Failed to fetch data");
