@@ -78,7 +78,6 @@ const AdBanner: React.FC = () => {
     const invokeScript = document.createElement("script");
     invokeScript.type = "text/javascript";
     invokeScript.src =
-      process.env.NEXT_PUBLIC_ADBANNER_SCRIPT ||
       "//www.highperformanceformat.com/8f03b174bff8e7b46b4bad1450bdaef1/invoke.js";
     invokeScript.async = true;
     if (adContainerRef.current) {
@@ -106,7 +105,6 @@ const AdsterraNativeBanner: React.FC = () => {
     script.async = true;
     script.setAttribute("data-cfasync", "false");
     script.src =
-      process.env.NEXT_PUBLIC_ADSTERRA_SCRIPT ||
       "//pl25846014.effectiveratecpm.com/db1b505556897740c7475f57aa733c5e/invoke.js";
     document.head.appendChild(script);
     return () => {
@@ -360,55 +358,6 @@ const HomePage: React.FC<HomePageProps> = ({
     }
   }, [initialMatches]);
 
-  useEffect(() => {
-    // Disable right-click context menu
-    const handleContextMenu = (e: Event) => {
-      e.preventDefault();
-    };
-
-    // Disable common DevTools shortcuts
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "F12" ||
-        (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) ||
-        (e.ctrlKey && e.key === "U")
-      ) {
-        e.preventDefault();
-      }
-    };
-
-    // Detect DevTools opening (approximate, works in some cases)
-    let devToolsOpen = false;
-    const threshold = 160; // Approximate width/height when DevTools is open
-    const checkDevTools = () => {
-      const widthDiff = window.outerWidth - window.innerWidth > threshold;
-      const heightDiff = window.outerHeight - window.innerHeight > threshold;
-      if (widthDiff || heightDiff) {
-        if (!devToolsOpen) {
-          devToolsOpen = true;
-          setToast({
-            message: "Developer tools detected. Please close to continue.",
-            type: "error",
-          });
-        }
-      } else {
-        devToolsOpen = false;
-      }
-    };
-
-    // Add event listeners
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyDown);
-    const devToolsInterval = setInterval(checkDevTools, 1000);
-
-    // Cleanup
-    return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyDown);
-      clearInterval(devToolsInterval);
-    };
-  }, []);
-
   const openTelegram = () => {
     window.open("https://t.me/futball_liveapp", "_blank");
   };
@@ -520,16 +469,11 @@ const HomePage: React.FC<HomePageProps> = ({
   const fetchMatches = async (showLoading = false): Promise<void> => {
     if (showLoading) setIsLoading(true);
     try {
-      const primaryEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT;
-      const fallbackEndpoint = process.env.NEXT_PUBLIC_FALLBACK_ENDPOINT;
-
-      if (!primaryEndpoint || !fallbackEndpoint) {
-        throw new Error("Configuration error: Missing API endpoints");
-      }
-
-      let response = await fetch(primaryEndpoint);
+      let response = await fetch("https://api.livesports808.top/");
       if (!response.ok) {
-        response = await fetch(fallbackEndpoint);
+        response = await fetch(
+          "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+        );
         if (!response.ok) {
           throw new Error("Both primary and fallback API requests failed");
         }
@@ -994,26 +938,11 @@ export default HomePage;
 
 export const getServerSideProps: GetServerSideProps = async () => {
   try {
-    const primaryEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT;
-    const fallbackEndpoint = process.env.NEXT_PUBLIC_FALLBACK_ENDPOINT;
-
-    if (!primaryEndpoint || !fallbackEndpoint) {
-      return {
-        props: {
-          initialMatches: {
-            live: [],
-            scheduled: [],
-            finished: [],
-            byDate: {},
-          },
-          initialLiveGames: [],
-        },
-      };
-    }
-
-    let response = await fetch(primaryEndpoint);
+    let response = await fetch("https://api.livesports808.top/");
     if (!response.ok) {
-      response = await fetch(fallbackEndpoint);
+      response = await fetch(
+        "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+      );
       if (!response.ok) {
         throw new Error("Both primary and fallback API requests failed");
       }

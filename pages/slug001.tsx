@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { ArrowLeft, Share2, Star, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { GetServerSidePropsContext } from "next";
 
 interface Event {
   id: string;
@@ -54,11 +53,33 @@ interface MatchStatus {
   display: string;
 }
 
-interface ToastProps {
-  message: string;
-  onClose: () => void;
-}
+// // Adsterra Native Banner Component
+// const AdsterraNativeBanner: React.FC = () => {
+//   const adContainerRef = useRef<HTMLDivElement>(null);
 
+//   useEffect(() => {
+//     const script = document.createElement("script");
+//     script.async = true;
+//     script.setAttribute("data-cfasync", "false");
+//     script.src =
+//       "//pl19321751.effectiveratecpm.com/fc2cbfb22e260069b1ccff47a6b87e40/invoke.js";
+
+//     document.head.appendChild(script);
+
+//     return () => {
+//       script.remove();
+//       if (adContainerRef.current) {
+//         adContainerRef.current.innerHTML = "";
+//       }
+//     };
+//   }, []);
+
+//   return (
+//     <div id="container-fc2cbfb22e260069b1ccff47a6b87e40" ref={adContainerRef} />
+//   );
+// };
+
+// Adsterra Native Banner Component
 const AdsterraNativeBanner: React.FC = () => {
   const adContainerRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +88,6 @@ const AdsterraNativeBanner: React.FC = () => {
     script.async = true;
     script.setAttribute("data-cfasync", "false");
     script.src =
-      process.env.NEXT_PUBLIC_ADSTERRA_SCRIPT ||
       "//pl25846014.effectiveratecpm.com/db1b505556897740c7475f57aa733c5e/invoke.js";
 
     document.head.appendChild(script);
@@ -85,21 +105,29 @@ const AdsterraNativeBanner: React.FC = () => {
   );
 };
 
-const Toast: React.FC<ToastProps> = ({ message, onClose }) => (
-  <div className="fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg text-white bg-red-600 transition-opacity duration-300">
-    {message}
-  </div>
-);
+// const getMatchStatus = (matchTime: string | Date): MatchStatus => {
+//   const statusTime = formatStatusTime(matchTime);
+//   const now = new Date();
+//   const gameTime = new Date(statusTime);
+//   const diffInMinutes = Math.floor(
+//     (now.getTime() - gameTime.getTime()) / (1000 * 60) + 1
+//   );
 
-const getMatchStatus = (
-  matchTime: string | Date | null | undefined
-): MatchStatus => {
-  if (!matchTime) {
-    return { status: "Scheduled", display: "Invalid time" };
-  }
+//   if (diffInMinutes < 0) {
+//     return { status: "Scheduled", display: formatMatchTime(matchTime) };
+//   } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
+//     return { status: "Live", display: "LIVE" };
+//   } else {
+//     return { status: "FT", display: "FINISHED" };
+//   }
+// };
+
+// Simplified time handling
+const getMatchStatus = (matchTime: string | Date): MatchStatus => {
   const gameTime = matchTime instanceof Date ? matchTime : new Date(matchTime);
 
   if (isNaN(gameTime.getTime())) {
+    console.error("Invalid date format:", matchTime);
     return { status: "Scheduled", display: "Invalid time" };
   }
 
@@ -123,22 +151,27 @@ const getMatchStatus = (
   return { status: "FT", display: "FINISHED" };
 };
 
-const formatMatchTime = (utcTime: string | Date | null | undefined): string => {
-  if (!utcTime) {
-    return "Invalid time";
-  }
+// Time formatting utilities
+const formatMatchTime = (utcTime: string | Date): string => {
   let localTime: Date;
+
   if (utcTime instanceof Date) {
     localTime = new Date(
       utcTime.getTime() - utcTime.getTimezoneOffset() * 60000
     );
-  } else {
+  } else if (typeof utcTime === "string") {
     const utcTimeISO = utcTime.replace(" ", "T") + "Z";
     localTime = new Date(utcTimeISO);
+
     if (isNaN(localTime.getTime())) {
+      console.error("Invalid date format:", utcTime);
       return "Invalid time";
     }
+  } else {
+    console.error("Expected a string or Date but received:", typeof utcTime);
+    return "Invalid time";
   }
+
   return localTime.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -146,24 +179,30 @@ const formatMatchTime = (utcTime: string | Date | null | undefined): string => {
   });
 };
 
-const formatStatusTime = (utcTime: string | Date | null | undefined): Date => {
-  if (!utcTime) {
-    return new Date();
-  }
+const formatStatusTime = (utcTime: string | Date): Date => {
   let localTime: Date;
+
   if (utcTime instanceof Date) {
     localTime = new Date(
       utcTime.getTime() - utcTime.getTimezoneOffset() * 60000
     );
-  } else {
+  } else if (typeof utcTime === "string") {
     const utcTimeISO = utcTime.replace(" ", "T") + "Z";
     localTime = new Date(utcTimeISO);
+
     if (isNaN(localTime.getTime())) {
+      console.error("Invalid date format:", utcTime);
       return new Date();
     }
+  } else {
+    console.error("Expected a string or Date but received:", typeof utcTime);
+    return new Date();
   }
+
   return localTime;
 };
+
+// const WatchPage: React.FC = () => {
 
 const WatchPage: React.FC<{
   initialMatchData: Event | null;
@@ -176,86 +215,53 @@ const WatchPage: React.FC<{
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeUrlIndex, setActiveUrlIndex] = useState(0);
   const [relatedStreams, setRelatedStreams] = useState<RelatedStream[]>([]);
-  const [toast, setToast] = useState<string | null>(null);
   const iframeContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "F12" ||
-        (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) ||
-        (e.ctrlKey && e.key === "U")
-      ) {
-        e.preventDefault();
-      }
-    };
-
-    let devToolsOpen = false;
-    const threshold = 160;
-    const checkDevTools = () => {
-      const widthDiff = window.outerWidth - window.innerWidth > threshold;
-      const heightDiff = window.outerHeight - window.innerHeight > threshold;
-      if (widthDiff || heightDiff) {
-        if (!devToolsOpen) {
-          devToolsOpen = true;
-          setToast("Developer tools detected. Please close to continue.");
-        }
-      } else {
-        devToolsOpen = false;
-        setToast(null);
-      }
-    };
-
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyDown);
-    const devToolsInterval = setInterval(checkDevTools, 1000);
-
-    return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyDown);
-      clearInterval(devToolsInterval);
-    };
-  }, []);
-
+  // Improved stream change function that directly replaces the iframe
   const changeStream = (index: number) => {
     if (!match?.urls[index]) return;
 
     setActiveUrlIndex(index);
 
+    // Safely replace the iframe content
     if (iframeContainerRef.current) {
+      // Remove existing iframe
       while (iframeContainerRef.current.firstChild) {
         iframeContainerRef.current.removeChild(
           iframeContainerRef.current.firstChild
         );
       }
 
-      const newIframe = document.createElement("iframe") as HTMLIFrameElement;
+      // Create and append new iframe with the selected stream URL
+      const newIframe = document.createElement("iframe");
       newIframe.src = match.urls[index];
       newIframe.allow =
         "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+
+      // Use an array of values for sandbox instead of add method
       newIframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
       newIframe.allowFullscreen = true;
 
+      // Append the new iframe to container
       iframeContainerRef.current.appendChild(newIframe);
     }
   };
 
+  // Function to open HD stream in a new tab
   const openHDStream = () => {
     if (match && match.urls.length > 0) {
-      window.open(
-        process.env.NEXT_PUBLIC_HD_STREAM_URL ||
-          "https://chilsihooveek.net/4/8916857",
-        "_blank"
-      );
+      window.open("https://chilsihooveek.net/4/8916857", "_blank");
+      // https://chilsihooveek.net/4/8916857
+      // https://www.effectiveratecpm.com/bswczp0n?key=1b85d7f54ff19004655652b23be0b583
     }
   };
 
+  // Handle back button navigation - closes the page without iframe history interference
   useEffect(() => {
-    const handleBackButton = () => {};
+    const handleBackButton = (e: PopStateEvent) => {
+      // Standard navigation behavior when back button is pressed
+      // No special handling needed, browser will exit the current page
+    };
 
     window.addEventListener("popstate", handleBackButton);
 
@@ -264,13 +270,233 @@ const WatchPage: React.FC<{
     };
   }, []);
 
+  // useEffect(() => {
+  //   if (!slug || !router.isReady) return;
+
+  //   const fetchMatchDetails = async () => {
+
+  // useEffect(() => {
+  //   if (!slug || !router.isReady) return;
+
+  //   const fetchMatchDetails = async () => {
+  //     // If we already have initial data from server-side props, use that first
+  //     if (initialMatchData && !match) {
+  //       // Get match status using the time conversion function
+  //       const matchStatus = getMatchStatus(initialMatchData.time);
+
+  //       // Parse event data to create match details
+  //       const matchData: MatchDetails = {
+  //         id: initialMatchData.id,
+  //         homeTeam: {
+  //           name: initialMatchData.homeTeam,
+  //           logo: initialMatchData.homeTeamLogo || "/api/placeholder/40/40",
+  //         },
+  //         awayTeam: {
+  //           name: initialMatchData.awayTeam,
+  //           logo: initialMatchData.awayTeamLogo || "/api/placeholder/40/40",
+  //         },
+  //         tournament: initialMatchData.competition,
+  //         status:
+  //           matchStatus.status === "FT"
+  //             ? "Finished"
+  //             : matchStatus.status === "Live"
+  //             ? "Live"
+  //             : "Scheduled",
+  //         statusDisplay: matchStatus.display,
+  //         urls: initialMatchData.urls || [
+  //           "https://sportzonline.si/channels/hd/hd9.php",
+  //         ],
+  //         commentator: initialMatchData.commentator || "Unknown",
+  //         channel: initialMatchData.channel || "Unknown",
+  //         startTime: initialMatchData.time,
+  //       };
+
+  //       setMatch(matchData);
+
+  //       // Check if this match is in favorites (client-side only)
+  //       if (typeof window !== "undefined") {
+  //         const savedFavorites = localStorage.getItem("favoriteMatches");
+  //         if (savedFavorites) {
+  //           const favorites = JSON.parse(savedFavorites);
+  //           setIsFavorite(favorites.includes(matchData.id));
+  //         }
+  //       }
+
+  //       // Process initial related streams
+  //       if (initialRelatedStreams.length > 0) {
+  //         const relatedStreamsData = initialRelatedStreams.map((event) => {
+  //           const status = getMatchStatus(event.time);
+  //           return {
+  //             id: event.id,
+  //             homeTeam: event.homeTeam,
+  //             awayTeam: event.awayTeam,
+  //             bannerImage: event.eventBanner || "/api/placeholder/300/150",
+  //             isLive: status.status === "Live",
+  //             startTime: event.time,
+  //             statusDisplay: status.display,
+  //           };
+  //         });
+
+  //         setRelatedStreams(relatedStreamsData);
+  //       }
+
+  //       setIsLoading(false);
+  //       return;
+  //     }
+
+  //     setIsLoading(true);
+  //     try {
+  //       // Fetch data from GitHub repository
+  //       const response = await fetch("https://api.livesports808.top/");
+  //       const data = await response.json();
+
+  //       // Merge all event categories (yesterday, today, upcoming)
+  //       const allEvents = [
+  //         ...(data.yesterday || []),
+  //         ...(data.today || []),
+  //         ...(data.upcoming || []),
+  //       ];
+
+  //       // Find the event matching the slug
+  //       const slugString = Array.isArray(slug) ? slug[0] : slug;
+  //       const eventData = allEvents.find((ev: Event) => ev.id === slugString);
+
+  //       if (!eventData) {
+  //         console.error("Event not found for slug:", slugString);
+  //         setIsLoading(false);
+  //         return;
+  //       }
+
+  //       // Get match status using the new time conversion function
+  //       const matchStatus = getMatchStatus(eventData.time);
+
+  //       // Parse event data to create match details
+  //       const matchData: MatchDetails = {
+  //         id: eventData.id,
+  //         homeTeam: {
+  //           name: eventData.homeTeam,
+  //           logo: eventData.homeTeamLogo || "/api/placeholder/40/40",
+  //         },
+  //         awayTeam: {
+  //           name: eventData.awayTeam,
+  //           logo: eventData.awayTeamLogo || "/api/placeholder/40/40",
+  //         },
+  //         tournament: eventData.competition,
+  //         status:
+  //           matchStatus.status === "FT"
+  //             ? "Finished"
+  //             : matchStatus.status === "Live"
+  //             ? "Live"
+  //             : "Scheduled",
+  //         statusDisplay: matchStatus.display,
+  //         urls: eventData.urls || [
+  //           "https://sportzonline.si/channels/hd/hd9.php",
+  //         ],
+  //         commentator: eventData.commentator || "Unknown",
+  //         channel: eventData.channel || "Unknown",
+  //         startTime: eventData.time,
+  //       };
+
+  //       setMatch(matchData);
+
+  //       // Check if this match is in favorites
+  //       const savedFavorites = localStorage.getItem("favoriteMatches");
+  //       if (savedFavorites) {
+  //         const favorites = JSON.parse(savedFavorites);
+  //         setIsFavorite(favorites.includes(matchData.id));
+  //       }
+
+  //       // Fetch related streams - get live events first, then scheduled events
+  //       // const now = new Date();
+
+  //       const now = new Date();
+
+  //       // Filter events to show only Live or Scheduled matches
+  //       const filteredEvents = allEvents.filter((event) => {
+  //         if (event.id === slugString) return false; // Exclude current match
+
+  //         const status = getMatchStatus(event.time);
+  //         // Only include Live or Scheduled matches
+  //         return status.status !== "FT";
+  //       });
+
+  //       // Sort events by live status first, then by time
+  //       const sortedEvents = filteredEvents.sort((a, b) => {
+  //         const aStatus = getMatchStatus(a.time);
+  //         const bStatus = getMatchStatus(b.time);
+
+  //         const aIsLive = aStatus.status === "Live";
+  //         const bIsLive = bStatus.status === "Live";
+
+  //         if (aIsLive && !bIsLive) return -1;
+  //         if (!aIsLive && bIsLive) return 1;
+
+  //         return (
+  //           formatStatusTime(a.time).getTime() -
+  //           formatStatusTime(b.time).getTime()
+  //         );
+  //       });
+
+  //       // Take first 12 events for more options
+  //       const relatedEvents = sortedEvents.slice(0, 12);
+
+  //       // Sort events by live status first, then by time
+  //       // const sortedEvents = allEvents
+  //       //   .filter((event) => event.id !== slugString) // Exclude current match
+  //       //   .sort((a, b) => {
+  //       //     const aStatus = getMatchStatus(a.time);
+  //       //     const bStatus = getMatchStatus(b.time);
+
+  //       //     const aIsLive = aStatus.status === "Live";
+  //       //     const bIsLive = bStatus.status === "Live";
+
+  //       //     if (aIsLive && !bIsLive) return -1;
+  //       //     if (!aIsLive && bIsLive) return 1;
+
+  //       //     return (
+  //       //       formatStatusTime(a.time).getTime() -
+  //       //       formatStatusTime(b.time).getTime()
+  //       //     );
+  //       //   });
+
+  //       // // Take first 12 events for more options
+  //       // const relatedEvents = sortedEvents.slice(0, 12);
+
+  //       // Map to RelatedStream format with proper status
+  //       const relatedStreamsData = relatedEvents.map((event) => {
+  //         const status = getMatchStatus(event.time);
+  //         return {
+  //           id: event.id,
+  //           homeTeam: event.homeTeam,
+  //           awayTeam: event.awayTeam,
+  //           bannerImage: event.eventBanner || "/api/placeholder/300/150",
+  //           isLive: status.status === "Live",
+  //           startTime: event.time,
+  //           statusDisplay: status.display,
+  //         };
+  //       });
+
+  //       setRelatedStreams(relatedStreamsData);
+  //     } catch (error) {
+  //       console.error("Error fetching match details:", error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   fetchMatchDetails();
+  // }, [slug, router.isReady]);
+
   useEffect(() => {
     if (!slug || !router.isReady) return;
 
     const fetchMatchDetails = async () => {
+      // If we already have initial data from server-side props, use that first
       if (initialMatchData && !match) {
+        // Get match status using the time conversion function
         const matchStatus = getMatchStatus(initialMatchData.time);
 
+        // Parse event data to create match details
         const matchData: MatchDetails = {
           id: initialMatchData.id,
           homeTeam: {
@@ -299,6 +525,7 @@ const WatchPage: React.FC<{
 
         setMatch(matchData);
 
+        // Check if this match is in favorites (client-side only)
         if (typeof window !== "undefined") {
           const savedFavorites = localStorage.getItem("favoriteMatches");
           if (savedFavorites) {
@@ -307,6 +534,7 @@ const WatchPage: React.FC<{
           }
         }
 
+        // Process initial related streams
         if (initialRelatedStreams.length > 0) {
           const relatedStreamsData = initialRelatedStreams.map((event) => {
             const status = getMatchStatus(event.time);
@@ -330,48 +558,45 @@ const WatchPage: React.FC<{
 
       setIsLoading(true);
       try {
-        const primaryEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT;
-        const fallbackEndpoint = process.env.NEXT_PUBLIC_FALLBACK_ENDPOINT;
-
-        if (!primaryEndpoint || !fallbackEndpoint) {
-          setToast("Configuration error. Please try again later.");
-          setIsLoading(false);
-          return;
-        }
-
-        let response = await fetch(primaryEndpoint);
+        // Try primary API first
+        let response = await fetch("https://api.livesports808.top/");
         if (!response.ok) {
-          response = await fetch(fallbackEndpoint);
+          console.warn("Primary API failed, trying fallback API...");
+          response = await fetch(
+            "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+          );
           if (!response.ok) {
-            setToast("Failed to load match data. Please try again.");
-            setIsLoading(false);
-            return;
+            throw new Error("Both primary and fallback API requests failed");
           }
         }
         const data = await response.json();
 
+        // Merge all event categories (yesterday, today, upcoming)
         const allEvents = [
           ...(data.yesterday || []),
           ...(data.today || []),
           ...(data.upcoming || []),
         ];
 
+        // Find the event matching the slug
         const slugString = Array.isArray(slug) ? slug[0] : slug;
         const eventData = allEvents.find((ev: Event) => ev.id === slugString);
 
         if (!eventData) {
-          setToast("Match not found.");
+          console.error("Event not found for slug:", slugString);
           setIsLoading(false);
           return;
         }
 
+        // Get match status using the new time conversion function
         const matchStatus = getMatchStatus(eventData.time);
 
+        // Parse event data to create match details
         const matchData: MatchDetails = {
           id: eventData.id,
           homeTeam: {
             name: eventData.homeTeam,
-            logo: eventData.homeTeamLogo || "/api/placeholder/Amsterdam/40",
+            logo: eventData.homeTeamLogo || "/api/placeholder/40/40",
           },
           awayTeam: {
             name: eventData.awayTeam,
@@ -395,19 +620,23 @@ const WatchPage: React.FC<{
 
         setMatch(matchData);
 
+        // Check if this match is in favorites
         const savedFavorites = localStorage.getItem("favoriteMatches");
         if (savedFavorites) {
           const favorites = JSON.parse(savedFavorites);
           setIsFavorite(favorites.includes(matchData.id));
         }
 
+        // Filter events to show only Live or Scheduled matches
         const filteredEvents = allEvents.filter((event) => {
-          if (event.id === slugString) return false;
+          if (event.id === slugString) return false; // Exclude current match
 
           const status = getMatchStatus(event.time);
+          // Only include Live or Scheduled matches
           return status.status !== "FT";
         });
 
+        // Sort events by live status first, then by time
         const sortedEvents = filteredEvents.sort((a, b) => {
           const aStatus = getMatchStatus(a.time);
           const bStatus = getMatchStatus(b.time);
@@ -424,8 +653,10 @@ const WatchPage: React.FC<{
           );
         });
 
+        // Take first 12 events for more options
         const relatedEvents = sortedEvents.slice(0, 12);
 
+        // Map to RelatedStream format with proper status
         const relatedStreamsData = relatedEvents.map((event) => {
           const status = getMatchStatus(event.time);
           return {
@@ -440,8 +671,8 @@ const WatchPage: React.FC<{
         });
 
         setRelatedStreams(relatedStreamsData);
-      } catch {
-        setToast("Failed to load match data. Please try again.");
+      } catch (error) {
+        console.error("Error fetching match details:", error);
       } finally {
         setIsLoading(false);
       }
@@ -450,6 +681,7 @@ const WatchPage: React.FC<{
     fetchMatchDetails();
   }, [slug, router.isReady, initialMatchData, initialRelatedStreams]);
 
+  // Periodically update match status
   useEffect(() => {
     if (!match) return;
 
@@ -470,7 +702,7 @@ const WatchPage: React.FC<{
           };
         });
       }
-    }, 60000);
+    }, 60000); // Update every minute
 
     return () => {
       clearInterval(statusInterval);
@@ -506,7 +738,8 @@ const WatchPage: React.FC<{
     }
   };
 
-  const placeholderMatch: MatchDetails = {
+  // Create a placeholder match for initial render
+  const placeholderMatch = {
     id: "",
     homeTeam: {
       name: "",
@@ -517,7 +750,7 @@ const WatchPage: React.FC<{
       logo: "/api/placeholder/40/40",
     },
     tournament: "",
-    status: "Live",
+    status: "Live" as const,
     statusDisplay: "",
     urls: [""],
     commentator: "",
@@ -525,23 +758,25 @@ const WatchPage: React.FC<{
     startTime: "",
   };
 
+  // Use match data if loaded, otherwise use placeholder
   const displayMatch = match || placeholderMatch;
 
+  // Effect to initialize the first iframe
   useEffect(() => {
     if (
       !isLoading &&
       displayMatch.urls.length > 0 &&
       iframeContainerRef.current
     ) {
+      // Make sure container is empty first
       while (iframeContainerRef.current.firstChild) {
         iframeContainerRef.current.removeChild(
           iframeContainerRef.current.firstChild
         );
       }
 
-      const initialIframe = document.createElement(
-        "iframe"
-      ) as HTMLIFrameElement;
+      // Create initial iframe
+      const initialIframe = document.createElement("iframe");
       initialIframe.src = displayMatch.urls[activeUrlIndex];
       initialIframe.allow =
         "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
@@ -552,43 +787,116 @@ const WatchPage: React.FC<{
     }
   }, [isLoading, displayMatch.urls, activeUrlIndex]);
 
+  // Add a new useEffect for refreshing the related streams list completely
+  // useEffect(() => {
+  //   if (!slug || !router.isReady) return;
+
+  //   const refreshRelatedStreams = async () => {
+  //     try {
+  //       // Fetch fresh data from GitHub repository
+  //       const response = await fetch("https://api.livesports808.top/");
+  //       const data = await response.json();
+
+  //       // Merge all event categories
+  //       const allEvents = [
+  //         ...(data.yesterday || []),
+  //         ...(data.today || []),
+  //         ...(data.upcoming || []),
+  //       ];
+
+  //       // Filter out current match and finished matches
+  //       const slugString = Array.isArray(slug) ? slug[0] : slug;
+  //       const filteredEvents = allEvents.filter((event) => {
+  //         if (event.id === slugString) return false;
+
+  //         const status = getMatchStatus(event.time);
+  //         return status.status !== "FT"; // Only include Live or Scheduled
+  //       });
+
+  //       // Sort by live status then time
+  //       const sortedEvents = filteredEvents.sort((a, b) => {
+  //         const aStatus = getMatchStatus(a.time);
+  //         const bStatus = getMatchStatus(b.time);
+
+  //         const aIsLive = aStatus.status === "Live";
+  //         const bIsLive = bStatus.status === "Live";
+
+  //         if (aIsLive && !bIsLive) return -1;
+  //         if (!aIsLive && bIsLive) return 1;
+
+  //         return (
+  //           formatStatusTime(a.time).getTime() -
+  //           formatStatusTime(b.time).getTime()
+  //         );
+  //       });
+
+  //       // Take first 12 events
+  //       const relatedEvents = sortedEvents.slice(0, 12);
+
+  //       // Map to RelatedStream format
+  //       const relatedStreamsData = relatedEvents.map((event) => {
+  //         const status = getMatchStatus(event.time);
+  //         return {
+  //           id: event.id,
+  //           homeTeam: event.homeTeam,
+  //           awayTeam: event.awayTeam,
+  //           bannerImage: event.eventBanner || "/api/placeholder/300/150",
+  //           isLive: status.status === "Live",
+  //           startTime: event.time,
+  //           statusDisplay: status.display,
+  //         };
+  //       });
+
+  //       setRelatedStreams(relatedStreamsData);
+  //     } catch (error) {
+  //       console.error("Error refreshing related streams:", error);
+  //     }
+  //   };
+
+  //   // Run initially
+  //   refreshRelatedStreams();
+
+  //   // Set up interval to refresh every 5 minutes
+  //   const refreshInterval = setInterval(refreshRelatedStreams, 5 * 60 * 1000);
+
+  //   return () => clearInterval(refreshInterval);
+  // }, [slug, router.isReady]);
+
   useEffect(() => {
     if (!slug || !router.isReady) return;
 
     const refreshRelatedStreams = async () => {
       try {
-        const primaryEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT;
-        const fallbackEndpoint = process.env.NEXT_PUBLIC_FALLBACK_ENDPOINT;
-
-        if (!primaryEndpoint || !fallbackEndpoint) {
-          setToast("Configuration error. Please try again later.");
-          return;
-        }
-
-        let response = await fetch(primaryEndpoint);
+        // Try primary API first
+        let response = await fetch("https://api.livesports808.top/");
         if (!response.ok) {
-          response = await fetch(fallbackEndpoint);
+          console.warn("Primary API failed, trying fallback API...");
+          response = await fetch(
+            "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+          );
           if (!response.ok) {
-            setToast("Failed to load related streams. Please try again.");
-            return;
+            throw new Error("Both primary and fallback API requests failed");
           }
         }
         const data = await response.json();
 
+        // Merge all event categories
         const allEvents = [
           ...(data.yesterday || []),
           ...(data.today || []),
           ...(data.upcoming || []),
         ];
 
+        // Filter out current match and finished matches
         const slugString = Array.isArray(slug) ? slug[0] : slug;
         const filteredEvents = allEvents.filter((event) => {
           if (event.id === slugString) return false;
 
           const status = getMatchStatus(event.time);
-          return status.status !== "FT";
+          return status.status !== "FT"; // Only include Live or Scheduled
         });
 
+        // Sort by live status then time
         const sortedEvents = filteredEvents.sort((a, b) => {
           const aStatus = getMatchStatus(a.time);
           const bStatus = getMatchStatus(b.time);
@@ -605,8 +913,10 @@ const WatchPage: React.FC<{
           );
         });
 
+        // Take first 12 events
         const relatedEvents = sortedEvents.slice(0, 12);
 
+        // Map to RelatedStream format
         const relatedStreamsData = relatedEvents.map((event) => {
           const status = getMatchStatus(event.time);
           return {
@@ -621,13 +931,15 @@ const WatchPage: React.FC<{
         });
 
         setRelatedStreams(relatedStreamsData);
-      } catch {
-        setToast("Failed to load related streams. Please try again.");
+      } catch (error) {
+        console.error("Error refreshing related streams:", error);
       }
     };
 
+    // Run initially
     refreshRelatedStreams();
 
+    // Set up interval to refresh every 5 minutes
     const refreshInterval = setInterval(refreshRelatedStreams, 5 * 60 * 1000);
 
     return () => clearInterval(refreshInterval);
@@ -635,6 +947,20 @@ const WatchPage: React.FC<{
 
   return (
     <>
+      {/* <Head>
+        <title>
+          {match
+            ? `${match.homeTeam.name} vs ${match.awayTeam.name} - Live Stream`
+            : "Loading Match..."}
+        </title>
+        <meta
+          name="description"
+          content={
+            match
+              ? `Watch ${match.homeTeam.name} vs ${match.awayTeam.name} live stream`
+              : "Live sports streaming"
+          }
+        /> */}
       <Head>
         <title>
           {match
@@ -653,6 +979,7 @@ const WatchPage: React.FC<{
               : "Live sports streaming"
           }
         />
+
         <style>{`
           .video-container-custom11 {
             position: relative;
@@ -680,21 +1007,21 @@ const WatchPage: React.FC<{
             100% { background-position: 200% 0; }
           }
           .url-button {
-            background-color: #dc2626;
+            background-color: #dc2626; /* Red */
             padding: 0.5rem 1rem;
             border-radius: 0.375rem;
             font-weight: 500;
             transition: background-color 0.2s;
           }
           .url-button:hover {
-            background-color: #b91c1c;
+            background-color: #b91c1c; /* Darker red */
           }
           .url-button.active {
-            background-color: #7f1d1d;
+            background-color: #7f1d1d; /* Even darker red */
             box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
           }
           .hd-stream-button {
-            background-color: #15803d;
+            background-color: #15803d; /* Green */
             padding: 0.5rem 1rem;
             border-radius: 0.375rem;
             font-weight: 500;
@@ -704,7 +1031,7 @@ const WatchPage: React.FC<{
             gap: 0.375rem;
           }
           .hd-stream-button:hover {
-            background-color: #166534;
+            background-color: #166534; /* Darker green */
           }
           .score-display {
             background-color: rgba(128, 128, 128, 0.1);
@@ -715,6 +1042,7 @@ const WatchPage: React.FC<{
       </Head>
 
       <div className="min-h-screen bg-gray-900 text-white">
+        {/* Header - Score808 Navbar */}
         <div className="bg-gray-900 border-b border-gray-800">
           <div className="mx-auto max-w-[750px] px-4 py-3 flex items-center justify-between">
             <div className="text-xl font-bold text-white">Sports808</div>
@@ -730,7 +1058,9 @@ const WatchPage: React.FC<{
           </div>
         </div>
 
+        {/* Match Container */}
         <div className="mx-auto py-5 max-w-[750px] px-4 py-4">
+          {/* Tournament Name and Navigation */}
           <div className="flex items-center justify-between mb-4">
             <button className="text-gray-400" onClick={() => router.push("/")}>
               <ArrowLeft size={20} />
@@ -738,7 +1068,7 @@ const WatchPage: React.FC<{
             <div className="flex-1 text-center">
               {isLoading ? (
                 <span className="text-gray-300 shimmer h-6 w-36 rounded inline-block">
-                   
+                  &nbsp;
                 </span>
               ) : (
                 <span className="text-gray-300">{displayMatch.tournament}</span>
@@ -757,7 +1087,9 @@ const WatchPage: React.FC<{
             </div>
           </div>
 
+          {/* Teams and Score */}
           <div className="flex mx-10 justify-between items-center mb-6">
+            {/* Home Team */}
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-2">
                 {isLoading ? (
@@ -783,6 +1115,7 @@ const WatchPage: React.FC<{
               )}
             </div>
 
+            {/* Score */}
             <div className="text-center">
               <div className="text-2xl font-bold">
                 <span className="text-white score-display">-</span>
@@ -798,6 +1131,7 @@ const WatchPage: React.FC<{
               </div>
             </div>
 
+            {/* Away Team */}
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-2">
                 {isLoading ? (
@@ -824,13 +1158,16 @@ const WatchPage: React.FC<{
             </div>
           </div>
 
+          {/* Stream Container with black background */}
           <div className="bg-black rounded-lg overflow-hidden mb-4">
             <div className="video-container-custom11">
               {!isLoading && displayMatch.urls.length > 0 ? (
                 <div
                   ref={iframeContainerRef}
                   className="absolute inset-0 bg-black"
-                />
+                >
+                  {/* Initial iframe will be created by the useEffect */}
+                </div>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-black">
                   <div className="h-12 w-12 rounded-full border-4 border-gray-600 border-t-gray-200 animate-spin"></div>
@@ -839,6 +1176,7 @@ const WatchPage: React.FC<{
             </div>
           </div>
 
+          {/* URL Buttons and HD Stream Button */}
           {!isLoading && displayMatch.urls.length > 0 && (
             <div className="flex justify-between items-center mb-4">
               <div className="flex flex-wrap gap-3">
@@ -860,6 +1198,7 @@ const WatchPage: React.FC<{
             </div>
           )}
 
+          {/* Indonesia Button - Moved here as requested */}
           <div className="bg-gray-800 rounded-lg p-3 mb-4 flex justify-between items-center">
             <button className="px-3 py-1 rounded-full bg-green-500 text-xs font-medium">
               Indonesia
@@ -930,10 +1269,12 @@ const WatchPage: React.FC<{
             </div>
           </div>
 
+          {/* Adsterra Native Banner */}
           <div className="my-6">
             <AdsterraNativeBanner />
           </div>
 
+          {/* Watch LIVE (Related Streams) - Enhanced Grid Layout */}
           <div className="mb-4">
             <h2 className="text-lg font-bold py-3 mb-3 text-center">
               • More LIVE Events •
@@ -945,7 +1286,9 @@ const WatchPage: React.FC<{
                   key={stream.id}
                   onClick={(e) => {
                     e.preventDefault();
+                    // Show loading state
                     setIsLoading(true);
+                    // Navigate to new event page in same tab (standard navigation)
                     window.location.href = `/watch/${stream.id}`;
                   }}
                 >
@@ -957,7 +1300,7 @@ const WatchPage: React.FC<{
                         className="w-full h-24 object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
-                            "https://raw.githubusercontent.com/devk-sudo/LiveSports/refs/heads/main/stadium.jpg";
+                            "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/images/stadium.jpg";
                         }}
                       />
                       {stream.isLive ? (
@@ -982,6 +1325,7 @@ const WatchPage: React.FC<{
             </div>
           </div>
 
+          {/* Second Ad Banner - Moved here as requested */}
           <div className="bg-gray-800 h-16 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
             <div className="flex items-center">
               <span className="text-2xl font-bold text-white">Score808</span>
@@ -992,12 +1336,11 @@ const WatchPage: React.FC<{
             </div>
           </div>
 
-          <div className="text-center text-sm text-gray-400 py-4">
-            Score808 does not store any files on our server, we only linked to
-            the media which is hosted on 3rd party services.
+          {/* Click on team prompt */}
+          <div className="text-center text-gray-400 py-4">
+            Click on the team you support!
           </div>
         </div>
-        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       </div>
     </>
   );
@@ -1005,11 +1348,84 @@ const WatchPage: React.FC<{
 
 export default WatchPage;
 
-export async function getServerSideProps(
-  context: GetServerSidePropsContext<{ slug: string }>
-) {
-  // Safely access params
-  if (!context.params || !context.params.slug) {
+// export async function getServerSideProps(context: { params: { slug: any } }) {
+//   const { slug } = context.params;
+
+//   if (!slug) {
+//     return {
+//       redirect: {
+//         destination: "/",
+//         permanent: false,
+//       },
+//     };
+//   }
+
+//   try {
+//     // Fetch data from GitHub repository
+//     const response = await fetch(
+//       "https://api.livesports808.top/"
+//     );
+//     const data = await response.json();
+
+//     // Merge all event categories
+//     const allEvents = [
+//       ...(data.yesterday || []),
+//       ...(data.today || []),
+//       ...(data.upcoming || []),
+//     ];
+
+//     // Find the event matching the slug
+//     const eventData = allEvents.find((ev) => ev.id === slug);
+
+//     // Get related streams for SSR
+//     const relatedEvents = allEvents
+//       .filter((event) => {
+//         if (event.id === slug) return false;
+
+//         // Get match status
+//         const status = getMatchStatus(event.time);
+
+//         return status.status !== "FT";
+//       })
+//       .slice(0, 12);
+
+//     if (!eventData) {
+//       return {
+//         redirect: {
+//           destination: "/",
+//           permanent: false,
+//         },
+//       };
+//     }
+
+//     return {
+//       props: {
+//         initialMatchData: eventData || null,
+//         initialRelatedStreams: relatedEvents || [],
+//       },
+//     };
+//   } catch (error) {
+//     console.error("Error fetching match details:", error);
+//     // return {
+//     //   props: {
+//     //     initialMatchData: null,
+//     //     initialRelatedStreams: [],
+//     //   },
+//     // };
+
+//     return {
+//       redirect: {
+//         destination: "/",
+//         permanent: false,
+//       },
+//     };
+//   }
+// }
+
+export async function getServerSideProps(context: { params: { slug: any } }) {
+  const { slug } = context.params;
+
+  if (!slug) {
     return {
       redirect: {
         destination: "/",
@@ -1018,50 +1434,40 @@ export async function getServerSideProps(
     };
   }
 
-  const slug = context.params.slug;
-
   try {
-    const primaryEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT;
-    const fallbackEndpoint = process.env.NEXT_PUBLIC_FALLBACK_ENDPOINT;
-
-    if (!primaryEndpoint || !fallbackEndpoint) {
-      return {
-        redirect: {
-          destination: "/",
-          permanent: false,
-        },
-      };
-    }
-
-    let response = await fetch(primaryEndpoint);
+    // Try primary API first
+    let response = await fetch("https://api.livesports808.top/");
 
     if (!response.ok) {
-      response = await fetch(fallbackEndpoint);
+      console.warn("Primary API failed, trying fallback API...");
+      response = await fetch(
+        "https://raw.githubusercontent.com/rotich-brian/LiveSports/refs/heads/main/sportsprog3.json"
+      );
       if (!response.ok) {
-        return {
-          redirect: {
-            destination: "/",
-            permanent: false,
-          },
-        };
+        throw new Error("Both primary and fallback API requests failed");
       }
     }
 
     const data = await response.json();
 
+    // Merge all event categories
     const allEvents = [
       ...(data.yesterday || []),
       ...(data.today || []),
       ...(data.upcoming || []),
     ];
 
+    // Find the event matching the slug
     const eventData = allEvents.find((ev) => ev.id === slug);
 
+    // Get related streams for SSR
     const relatedEvents = allEvents
       .filter((event) => {
         if (event.id === slug) return false;
 
+        // Get match status
         const status = getMatchStatus(event.time);
+
         return status.status !== "FT";
       })
       .slice(0, 12);
@@ -1081,7 +1487,8 @@ export async function getServerSideProps(
         initialRelatedStreams: relatedEvents || [],
       },
     };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching match details:", error);
     return {
       redirect: {
         destination: "/",
