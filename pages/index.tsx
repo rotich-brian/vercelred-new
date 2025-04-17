@@ -1,4 +1,4 @@
-import { GetStaticProps } from "next";
+import { GetServerSideProps } from "next";
 import { useState, useRef, useEffect, MouseEvent } from "react";
 import {
   Star,
@@ -11,8 +11,8 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import Head from "next/head";
+import React from "react";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 
 interface ToastProps {
   message: string;
@@ -60,21 +60,67 @@ interface RawMatch {
   awayTeamLogo: string;
 }
 
-// Lazy-load Ad components
-const AdBanner = dynamic(() => import("../components/AdBanner"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex justify-center py-3 bg-white">Loading ad...</div>
-  ),
-});
+const AdBanner: React.FC = () => {
+  const adContainerRef = useRef<HTMLDivElement>(null);
 
-const AdsterraNativeBanner = dynamic(
-  () => import("../components/AdsterraNativeBanner"),
-  {
-    ssr: false,
-    loading: () => <div>Loading ad...</div>,
-  }
-);
+  useEffect(() => {
+    const optionsScript = document.createElement("script");
+    optionsScript.type = "text/javascript";
+    optionsScript.innerHTML = `
+      atOptions = {
+        'key' : '8f03b174bff8e7b46b4bad1450bdaef1',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    `;
+    const invokeScript = document.createElement("script");
+    invokeScript.type = "text/javascript";
+    invokeScript.src =
+      process.env.NEXT_PUBLIC_ADBANNER_SCRIPT ||
+      "//www.highperformanceformat.com/8f03b174bff8e7b46b4bad1450bdaef1/invoke.js";
+    invokeScript.async = true;
+    if (adContainerRef.current) {
+      document.head.appendChild(optionsScript);
+      adContainerRef.current.appendChild(invokeScript);
+    }
+    return () => {
+      optionsScript.remove();
+      if (adContainerRef.current) {
+        adContainerRef.current.innerHTML = "";
+      }
+    };
+  }, []);
+
+  return (
+    <div ref={adContainerRef} className="flex justify-center py-3 bg-white" />
+  );
+};
+
+const AdsterraNativeBanner: React.FC = () => {
+  const adContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.setAttribute("data-cfasync", "false");
+    script.src =
+      process.env.NEXT_PUBLIC_ADSTERRA_SCRIPT ||
+      "//pl25846014.effectiveratecpm.com/db1b505556897740c7475f57aa733c5e/invoke.js";
+    document.head.appendChild(script);
+    return () => {
+      script.remove();
+      if (adContainerRef.current) {
+        adContainerRef.current.innerHTML = "";
+      }
+    };
+  }, []);
+
+  return (
+    <div id="container-db1b505556897740c7475f57aa733c5e" ref={adContainerRef} />
+  );
+};
 
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => (
   <div
@@ -130,7 +176,7 @@ const TeamLogo: React.FC<TeamLogoProps> = ({
   teamName,
   className = "w-5 h-5 mr-2",
 }) => {
-  const [hasError, setHasError] = useState<boolean>(false);
+  const [hasError, setHasError] = React.useState<boolean>(false);
 
   return hasError ? (
     <FallbackLogo teamName={teamName} />
@@ -139,22 +185,11 @@ const TeamLogo: React.FC<TeamLogoProps> = ({
       className="flex items-center justify-center overflow-hidden relative"
       style={{ width: 20, height: 20 }}
     >
-      {/* <Image
+      <Image
         src={logoUrl}
         alt={`${teamName} logo`}
         fill
         sizes="20px"
-        className="object-contain"
-        onError={() => setHasError(true)}
-        priority={false}
-        unoptimized
-      /> */}
-
-      <Image
-        src={logoUrl}
-        alt={`${teamName} logo`}
-        width={20}
-        height={20}
         className="object-contain"
         onError={() => setHasError(true)}
         priority={false}
@@ -267,86 +302,25 @@ const MatchItem: React.FC<{ match: Match }> = ({ match }) => (
   </div>
 );
 
-const SkeletonMatchItem: React.FC = () => (
-  <div className="bg-white p-2 border-b border-gray-100 animate-pulse">
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-        <div className="flex md:gap-16 sm:gap-12 gap-8 px-2">
-          <div className="flex items-center">
-            <div className="w-6 h-6 bg-gray-200 rounded-full mr-2"></div>
-            <div className="h-3 bg-gray-200 rounded w-16"></div>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <div className="h-3 bg-gray-200 rounded w-8 mr-2"></div>
-              <div className="w-6 h-6 bg-gray-200 rounded-full mr-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-24"></div>
-            </div>
-            <div className="flex items-center">
-              <div className="h-3 bg-gray-200 rounded w-8 mr-2"></div>
-              <div className="w-6 h-6 bg-gray-200 rounded-full mr-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-24"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="h-6 bg-gray-200 rounded w-16"></div>
-    </div>
-  </div>
-);
-
-const SkeletonLiveGame: React.FC = () => (
-  <div className="bg-blue-50/50 rounded-lg p-3 w-60 flex-shrink-0 shadow-sm border border-blue-300 min-h-[120px] animate-pulse">
-    <div className="flex justify-between items-center mb-2">
-      <div className="flex items-center gap-2">
-        <div className="h-3 bg-gray-200 rounded w-20"></div>
-        <div className="h-4 bg-gray-200 rounded w-12"></div>
-      </div>
-    </div>
-    <div className="flex justify-between items-center">
-      <div className="space-y-2">
-        <div className="flex items-center">
-          <div className="w-6 h-6 bg-gray-200 rounded-full mr-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-24"></div>
-        </div>
-        <div className="flex items-center">
-          <div className="w-6 h-6 bg-gray-200 rounded-full mr-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-24"></div>
-        </div>
-      </div>
-      <div className="w-6 h-6 bg-gray-200 rounded-full"></div>
-    </div>
-  </div>
-);
-
 interface HomePageProps {
-  initialMatches?: MatchesState;
-  initialLiveGames?: Match[];
+  initialMatches: MatchesState;
+  initialLiveGames: Match[];
 }
 
-const HomePage: React.FC<HomePageProps> = () => {
-  const sports = [
-    { name: "Football" as const, icon: "⚽" },
-    { name: "Basketball" as const, icon: "🏀" },
-    { name: "Others" as const, icon: <MoreHorizontal size={18} /> },
-  ];
-
-  type Sport = (typeof sports)[number]["name"];
-  const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
+const HomePage: React.FC<HomePageProps> = ({
+  initialMatches,
+  initialLiveGames,
+}) => {
+  const [selectedSport, setSelectedSport] = useState<
+    "Football" | "Basketball" | "Others" | null
+  >(null);
   const [language, setLanguage] = useState<string>("English");
-  const [matches, setMatches] = useState<MatchesState>({
-    live: [],
-    scheduled: [],
-    finished: [],
-    byDate: {},
-  });
-  const [liveGames, setLiveGames] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<MatchesState>(initialMatches);
+  const [liveGames, setLiveGames] = useState<Match[]>(initialLiveGames);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [startX, setStartX] = useState<number>(0);
-  const [touchStartX, setTouchStartX] = useState<number>(0);
   const [scrollLeft, setScrollLeft] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -354,7 +328,196 @@ const HomePage: React.FC<HomePageProps> = () => {
   } | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  const fetchMatches = async (showLoading = true) => {
+  useEffect(() => {
+    if (initialMatches) {
+      const processInitialMatches = (matchGroup: Match[]): Match[] => {
+        return matchGroup.map((match) => ({
+          ...match,
+          time: new Date(match.time),
+          ...getMatchStatus(new Date(match.time)),
+        }));
+      };
+      const processedByDate: Record<string, Match[]> = {};
+      Object.keys(initialMatches.byDate).forEach((dateKey) => {
+        processedByDate[dateKey] = processInitialMatches(
+          initialMatches.byDate[dateKey]
+        );
+      });
+      setMatches({
+        live: processInitialMatches(initialMatches.live),
+        scheduled: processInitialMatches(initialMatches.scheduled),
+        finished: processInitialMatches(initialMatches.finished),
+        byDate: processedByDate,
+      });
+      setLiveGames(
+        processInitialMatches([
+          ...initialMatches.live,
+          ...initialMatches.scheduled.filter((m) =>
+            isMatchToday(new Date(m.time))
+          ),
+        ]).slice(0, 10)
+      );
+    }
+  }, [initialMatches]);
+
+  useEffect(() => {
+    // Disable right-click context menu
+    const handleContextMenu = (e: Event) => {
+      e.preventDefault();
+    };
+
+    // Disable common DevTools shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "F12" ||
+        (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) ||
+        (e.ctrlKey && e.key === "U")
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    // Detect DevTools opening (approximate, works in some cases)
+    let devToolsOpen = false;
+    const threshold = 160; // Approximate width/height when DevTools is open
+    const checkDevTools = () => {
+      const widthDiff = window.outerWidth - window.innerWidth > threshold;
+      const heightDiff = window.outerHeight - window.innerHeight > threshold;
+      if (widthDiff || heightDiff) {
+        if (!devToolsOpen) {
+          devToolsOpen = true;
+          setToast({
+            message: "Developer tools detected. Please close to continue.",
+            type: "error",
+          });
+        }
+      } else {
+        devToolsOpen = false;
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyDown);
+    const devToolsInterval = setInterval(checkDevTools, 1000);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyDown);
+      clearInterval(devToolsInterval);
+    };
+  }, []);
+
+  const openTelegram = () => {
+    window.open("https://t.me/futball_liveapp", "_blank");
+  };
+
+  const showToast = (
+    message: string,
+    type: "error" | "success" = "success"
+  ): void => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>): void => {
+    setIsDragging(true);
+    if (sliderRef.current) {
+      setStartX(e.pageX - sliderRef.current.offsetLeft);
+      setScrollLeft(sliderRef.current.scrollLeft);
+    }
+  };
+
+  const handleMouseUp = (): void => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = (): void => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>): void => {
+    if (!isDragging || !sliderRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - sliderRef.current.offsetLeft;
+    const walk = (x - startX) * 2;
+    sliderRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const formatMatchTime = (utcTime: string | Date): string => {
+    let matchTime: Date;
+    if (utcTime instanceof Date) {
+      matchTime = utcTime;
+    } else {
+      matchTime = new Date(utcTime);
+      if (isNaN(matchTime.getTime())) {
+        return "Invalid time";
+      }
+    }
+    return matchTime.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  const formatStatusTime = (utcTime: string | Date): Date => {
+    let matchTime: Date;
+    if (utcTime instanceof Date) {
+      matchTime = utcTime;
+    } else {
+      if (utcTime.includes("T") && utcTime.includes("Z")) {
+        matchTime = new Date(utcTime);
+      } else {
+        const utcTimeISO = utcTime.replace(" ", "T") + "Z";
+        matchTime = new Date(utcTimeISO);
+      }
+      if (isNaN(matchTime.getTime())) {
+        return new Date();
+      }
+    }
+    return matchTime;
+  };
+
+  const getMatchStatus = (matchTime: string | Date): MatchStatus => {
+    let statusTime: Date;
+    statusTime = formatStatusTime(matchTime);
+    const now = new Date();
+    const gameTime = new Date(statusTime);
+    const diffInMinutes = Math.floor(
+      (now.getTime() - gameTime.getTime()) / (1000 * 60) + 1
+    );
+    if (diffInMinutes < 0) {
+      return { status: "Scheduled", display: formatMatchTime(matchTime) };
+    } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
+      return { status: "Live", display: `Live` };
+    } else {
+      return { status: "FT", display: "FINISHED" };
+    }
+  };
+
+  const getMatchDateKey = (matchTime: string | Date): string => {
+    const matchTimeDate =
+      typeof matchTime === "string" ? new Date(matchTime) : matchTime;
+    const day = String(matchTimeDate.getDate()).padStart(2, "0");
+    const month = String(matchTimeDate.getMonth() + 1).padStart(2, "0");
+    const year = matchTimeDate.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const isMatchToday = (matchTime: string | Date): boolean => {
+    const now = new Date();
+    const matchTimeDate =
+      typeof matchTime === "string" ? new Date(matchTime) : matchTime;
+    return (
+      matchTimeDate.getDate() === now.getDate() &&
+      matchTimeDate.getMonth() === now.getMonth() &&
+      matchTimeDate.getFullYear() === now.getFullYear()
+    );
+  };
+
+  const fetchMatches = async (showLoading = false): Promise<void> => {
     if (showLoading) setIsLoading(true);
     try {
       const primaryEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT;
@@ -364,22 +527,13 @@ const HomePage: React.FC<HomePageProps> = () => {
         throw new Error("Configuration error: Missing API endpoints");
       }
 
-      let response;
-      try {
-        response = await fetch(primaryEndpoint);
-        if (!response.ok) throw new Error("Primary API request failed");
-      } catch (primaryError: unknown) {
-        const errorMessage =
-          primaryError instanceof Error
-            ? primaryError.message
-            : "Unknown error";
-        console.log("Primary API failed, trying fallback:", errorMessage);
+      let response = await fetch(primaryEndpoint);
+      if (!response.ok) {
         response = await fetch(fallbackEndpoint);
         if (!response.ok) {
           throw new Error("Both primary and fallback API requests failed");
         }
       }
-
       const data: ApiResponse = await response.json();
       const processedMatches: Match[] = data.today.map((match) => {
         let matchTime: Date;
@@ -432,7 +586,7 @@ const HomePage: React.FC<HomePageProps> = () => {
       }
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to load matches";
+        error instanceof Error ? error.message : "An unknown error occurred";
       setError(errorMessage);
       if (!showLoading) {
         showToast("Failed to update events", "error");
@@ -441,10 +595,6 @@ const HomePage: React.FC<HomePageProps> = () => {
       if (showLoading) setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchMatches();
-  }, []);
 
   useEffect(() => {
     const statusInterval = setInterval(() => {
@@ -473,207 +623,11 @@ const HomePage: React.FC<HomePageProps> = () => {
     };
   }, []);
 
-  // Defer anti-debugging to reduce initial load impact
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const handleContextMenu = (e: Event) => {
-        e.preventDefault();
-      };
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (
-          e.key === "F12" ||
-          (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) ||
-          (e.ctrlKey && e.key === "U")
-        ) {
-          e.preventDefault();
-        }
-      };
-      let devToolsOpen = false;
-      const threshold = 160;
-      const checkDevTools = () => {
-        const widthDiff = window.outerWidth - window.innerWidth > threshold;
-        const heightDiff = window.outerHeight - window.innerHeight > threshold;
-        if (widthDiff || heightDiff) {
-          if (!devToolsOpen) {
-            devToolsOpen = true;
-            setToast({
-              message: "Developer tools detected. Please close to continue.",
-              type: "error",
-            });
-          }
-        } else {
-          devToolsOpen = false;
-        }
-      };
-      document.addEventListener("contextmenu", handleContextMenu);
-      document.addEventListener("keydown", handleKeyDown);
-      const devToolsInterval = setInterval(checkDevTools, 1000);
-      return () => {
-        document.removeEventListener("contextmenu", handleContextMenu);
-        document.removeEventListener("keydown", handleKeyDown);
-        clearInterval(devToolsInterval);
-      };
-    }, 5000); // Delay 5s
-    return () => clearTimeout(timer);
-  }, []);
-
-  const openTelegram = () => {
-    window.open("https://t.me/futball_liveapp", "_blank");
-  };
-
-  const showToast = (
-    message: string,
-    type: "error" | "success" = "success"
-  ): void => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleMouseDown = (e: MouseEvent<HTMLDivElement>): void => {
-    setIsDragging(true);
-    if (sliderRef.current) {
-      setStartX(e.pageX - sliderRef.current.offsetLeft);
-      setScrollLeft(sliderRef.current.scrollLeft);
-    }
-  };
-
-  const handleMouseUp = (): void => {
-    setIsDragging(false);
-  };
-
-  const handleMouseLeave = (): void => {
-    setIsDragging(false);
-  };
-
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>): void => {
-    if (!isDragging || !sliderRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - sliderRef.current.offsetLeft;
-    const walk = (x - startX) * 2;
-    sliderRef.current.scrollLeft = scrollLeft - walk;
-  };
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>): void => {
-    if (sliderRef.current) {
-      setIsDragging(true);
-      setTouchStartX(e.touches[0].pageX - sliderRef.current.offsetLeft);
-      setScrollLeft(sliderRef.current.scrollLeft);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>): void => {
-    if (!isDragging || !sliderRef.current) return;
-    e.preventDefault();
-    const x = e.touches[0].pageX - sliderRef.current.offsetLeft;
-    const walk = (x - touchStartX) * 2;
-    sliderRef.current.scrollLeft = scrollLeft - walk;
-  };
-
-  const handleTouchEnd = (): void => {
-    setIsDragging(false);
-  };
-
-  const formatMatchTime = (utcTime: string | Date): string => {
-    let matchTime: Date;
-    if (utcTime instanceof Date) {
-      matchTime = utcTime;
-    } else {
-      matchTime = new Date(utcTime);
-      if (isNaN(matchTime.getTime())) {
-        return "Invalid time";
-      }
-    }
-    return matchTime.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: process.env.NEXT_PUBLIC_TIMEZONE || undefined,
-    });
-  };
-
-  // const formatStatusTime = (utcTime: string | Date): Date => {
-  //   let matchTime: Date;
-  //   if (utcTime instanceof Date) {
-  //     matchTime = utcTime;
-  //   } else {
-  //     if (utcTime.includes("T") && utcTime.includes("Z")) {
-  //       matchTime = new Date(utcTime);
-  //     } else {
-  //       const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-  //       matchTime = new Date(utcTimeISO);
-  //     }
-  //     if (isNaN(matchTime.getTime())) {
-  //       return new Date();
-  //     }
-  //   }
-  //   return matchTime;
-  // };
-
-  const formatStatusTime = (utcTime: string | Date): Date => {
-    // Already a Date object
-    if (utcTime instanceof Date) {
-      return isNaN(utcTime.getTime()) ? new Date() : utcTime;
-    }
-
-    // Handle string time formats
-    try {
-      // ISO format with T and Z
-      if (utcTime.includes("T")) {
-        const date = new Date(utcTime);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-
-      // Space-separated format
-      if (utcTime.includes(" ")) {
-        const utcTimeISO = utcTime.replace(" ", "T") + "Z";
-        const date = new Date(utcTimeISO);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-
-      // Standard date string
-      const date = new Date(utcTime);
-      return isNaN(date.getTime()) ? new Date() : date;
-    } catch (e) {
-      return new Date();
-    }
-  };
-
-  const getMatchStatus = (matchTime: string | Date): MatchStatus => {
-    let statusTime: Date;
-    statusTime = formatStatusTime(matchTime);
-    const now = new Date();
-    const gameTime = new Date(statusTime);
-    const diffInMinutes = Math.floor(
-      (now.getTime() - gameTime.getTime()) / (1000 * 60) + 1
-    );
-    if (diffInMinutes < 0) {
-      return { status: "Scheduled", display: formatMatchTime(matchTime) };
-    } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
-      return { status: "Live", display: `Live` };
-    } else {
-      return { status: "FT", display: "FINISHED" };
-    }
-  };
-
-  const getMatchDateKey = (matchTime: string | Date): string => {
-    const matchTimeDate =
-      typeof matchTime === "string" ? new Date(matchTime) : matchTime;
-    const day = String(matchTimeDate.getDate()).padStart(2, "0");
-    const month = String(matchTimeDate.getMonth() + 1).padStart(2, "0");
-    const year = matchTimeDate.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  const isMatchToday = (matchTime: string | Date): boolean => {
-    const now = new Date();
-    const matchTimeDate =
-      typeof matchTime === "string" ? new Date(matchTime) : matchTime;
-    return (
-      matchTimeDate.getDate() === now.getDate() &&
-      matchTimeDate.getMonth() === now.getMonth() &&
-      matchTimeDate.getFullYear() === now.getFullYear()
-    );
-  };
+  const sports = [
+    { name: "Football" as const, icon: "⚽" },
+    { name: "Basketball" as const, icon: "🏀" },
+    { name: "Others" as const, icon: <MoreHorizontal size={18} /> },
+  ];
 
   const languages = [
     "English",
@@ -703,7 +657,7 @@ const HomePage: React.FC<HomePageProps> = () => {
         />
         <meta
           name="keywords"
-          content="Score 808, score808, Live Sport Streams, Football Live, Livesports808, Livesports 808, sports streaming free"
+          content="Score 808, score808, Live Sport Streams, Football Live, Livesports808, Livesports 808,  sports streaming free"
         />
         <meta
           name="viewport"
@@ -773,7 +727,6 @@ const HomePage: React.FC<HomePageProps> = () => {
             }),
           }}
         />
-        <link rel="preload" href="/favicon.ico" as="image" />
       </Head>
       <div className="max-w-[750px] mx-auto">
         <div className="sticky top-0 z-10">
@@ -833,7 +786,7 @@ const HomePage: React.FC<HomePageProps> = () => {
                     key={sport.name}
                     onClick={() => setSelectedSport(sport.name)}
                     className={`inline-flex items-center gap-2 px-4 py-1 justify-center border-b-2 ${
-                      selectedSport === sport.name
+                      selectedSport === sport.name && selectedSport
                         ? "text-black text-sm font-bold border-[#002157] w-fit"
                         : "text-gray-600 text-sm font-bold border-transparent"
                     }`}
@@ -846,55 +799,17 @@ const HomePage: React.FC<HomePageProps> = () => {
             </nav>
           </div>
         </div>
-        <AdBanner />
         {isLoading ? (
-          <div className="max-w-[750px] mx-auto">
-            <div className="bg-blue-50/50 px-4 py-4 border-y border-blue-100/50 m-0">
-              <div
-                className="overflow-x-auto scrollbar-hide"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-              >
-                <div className="flex gap-3 min-w-min pb-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <SkeletonLiveGame key={i} />
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="space-y-0.4 bg-blue-100/30">
-              {[...Array(5)].map((_, i) => (
-                <SkeletonMatchItem key={i} />
-              ))}
-            </div>
-            <div className="flex justify-center py-8">
-              <CircleDashed className="h-6 w-6 animate-spin text-gray-500" />
-            </div>
+          <div className="flex justify-center py-8">
+            <CircleDashed className="h-6 w-6 animate-spin text-gray-500" />
           </div>
         ) : error ? (
-          <div className="text-red-600 text-center py-8">
-            {error}
-            <button
-              onClick={() => fetchMatches(true)}
-              className="ml-4 text-blue-600 underline hover:text-blue-800"
-            >
-              Try Again
-            </button>
-          </div>
+          <div className="text-red-600 text-center py-8">{error}</div>
         ) : (
           <div className="max-w-[750px] mx-auto">
             <main>
               {liveGames.length > 0 && (
                 <div className="bg-blue-50/50 px-4 py-4 border-y border-blue-100/50 m-0">
-                  {/* <div
-                    ref={sliderRef}
-                    className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
-                    onMouseDown={handleMouseDown}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseLeave}
-                    onMouseMove={handleMouseMove}
-                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                  > */}
-
                   <div
                     ref={sliderRef}
                     className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
@@ -902,9 +817,6 @@ const HomePage: React.FC<HomePageProps> = () => {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
                     onMouseMove={handleMouseMove}
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                   >
                     <div className="flex gap-3 min-w-min pb-0.5">
@@ -1017,7 +929,7 @@ const HomePage: React.FC<HomePageProps> = () => {
                             <span className="text-gray-600/70 text-sm block mb-4 pl-1">
                               {match.tournament}
                             </span>
-                            <div className="flex md:gap-16 sm:gap-12 gap-8">
+                            <div className="flex md:gap-16 sm:gap-12 gap-8 ">
                               <div className="flex items-center">
                                 <button className="text-gray-400 hover:text-[#002157]">
                                   <Star size={18} />
@@ -1080,9 +992,165 @@ const HomePage: React.FC<HomePageProps> = () => {
 
 export default HomePage;
 
-export const getStaticProps: GetStaticProps = async () => {
-  return {
-    props: {},
-    revalidate: 86400, // Regenerate daily for static assets
-  };
+export const getServerSideProps: GetServerSideProps = async () => {
+  try {
+    const primaryEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT;
+    const fallbackEndpoint = process.env.NEXT_PUBLIC_FALLBACK_ENDPOINT;
+
+    if (!primaryEndpoint || !fallbackEndpoint) {
+      return {
+        props: {
+          initialMatches: {
+            live: [],
+            scheduled: [],
+            finished: [],
+            byDate: {},
+          },
+          initialLiveGames: [],
+        },
+      };
+    }
+
+    let response = await fetch(primaryEndpoint);
+    if (!response.ok) {
+      response = await fetch(fallbackEndpoint);
+      if (!response.ok) {
+        throw new Error("Both primary and fallback API requests failed");
+      }
+    }
+    const data: ApiResponse = await response.json();
+    const processedMatches: Match[] = data.today.map((match) => {
+      let matchTime: Date;
+      try {
+        if (match.time.includes(" ")) {
+          const [datePart, timePart] = match.time.split(" ");
+          matchTime = new Date(`${datePart}T${timePart}Z`);
+        } else {
+          matchTime = new Date(match.time);
+        }
+        if (isNaN(matchTime.getTime())) {
+          matchTime = new Date();
+        }
+      } catch (e) {
+        matchTime = new Date();
+      }
+      const getMatchStatus = (matchTime: Date): MatchStatus => {
+        const now = new Date();
+        const gameTime = new Date(matchTime);
+        const diffInMinutes = Math.floor(
+          (now.getTime() - gameTime.getTime()) / (1000 * 60) + 1
+        );
+        if (diffInMinutes < 0) {
+          return {
+            status: "Scheduled",
+            display: `${matchTime
+              .getUTCHours()
+              .toString()
+              .padStart(2, "0")}:${matchTime
+              .getUTCMinutes()
+              .toString()
+              .padStart(2, "0")}`,
+          };
+        } else if (diffInMinutes >= 0 && diffInMinutes <= 120) {
+          return { status: "Live", display: `Live` };
+        } else {
+          return { status: "FT", display: "FINISHED" };
+        }
+      };
+      return {
+        id: match.id,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        tournament: match.competition,
+        ...getMatchStatus(matchTime),
+        time: matchTime,
+        eventUrl: match.eventUrl,
+        homeTeamLogo: match.homeTeamLogo,
+        awayTeamLogo: match.awayTeamLogo,
+      };
+    });
+    const sortedMatches = processedMatches.sort(
+      (a, b) => a.time.getTime() - b.time.getTime()
+    );
+    const live = sortedMatches.filter((m) => m.status === "Live");
+    const scheduled = sortedMatches.filter((m) => m.status === "Scheduled");
+    const finished = sortedMatches.filter((m) => m.status === "FT");
+    const isMatchToday = (matchTime: Date): boolean => {
+      const now = new Date();
+      return (
+        matchTime.getDate() === now.getDate() &&
+        matchTime.getMonth() === now.getMonth() &&
+        matchTime.getFullYear() === now.getFullYear()
+      );
+    };
+    const getMatchDateKey = (matchTime: Date): string => {
+      const day = String(matchTime.getDate()).padStart(2, "0");
+      const month = String(matchTime.getMonth() + 1).padStart(2, "0");
+      const year = matchTime.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
+    const byDate: Record<string, Match[]> = {};
+    scheduled.forEach((match) => {
+      if (isMatchToday(match.time)) return;
+      const dateKey = getMatchDateKey(match.time);
+      if (!byDate[dateKey]) {
+        byDate[dateKey] = [];
+      }
+      byDate[dateKey].push(match);
+    });
+    const liveGames = [
+      ...live,
+      ...scheduled.filter((m) => isMatchToday(m.time)),
+    ].slice(0, 10);
+    const serializableMatches = processedMatches.map((match) => ({
+      ...match,
+      time: match.time.toISOString(),
+    }));
+    const serializableLive = serializableMatches.filter(
+      (m) => m.status === "Live"
+    );
+    const serializableScheduled = serializableMatches.filter(
+      (m) => m.status === "Scheduled"
+    );
+    const serializableFinished = serializableMatches.filter(
+      (m) => m.status === "FT"
+    );
+    const serializableByDate: Record<string, any[]> = {};
+    Object.keys(byDate).forEach((dateKey) => {
+      serializableByDate[dateKey] = byDate[dateKey].map((match) => ({
+        ...match,
+        time: match.time.toISOString(),
+      }));
+    });
+    const serializableLiveGames = [
+      ...serializableLive,
+      ...serializableScheduled.filter((m) => {
+        const matchTime = new Date(m.time);
+        return isMatchToday(matchTime);
+      }),
+    ].slice(0, 10);
+    return {
+      props: {
+        initialMatches: {
+          live: serializableLive,
+          scheduled: serializableScheduled,
+          finished: serializableFinished,
+          byDate: serializableByDate,
+        },
+        initialLiveGames: serializableLiveGames,
+      },
+    };
+  } catch (error) {
+    return {
+      props: {
+        initialMatches: {
+          live: [],
+          scheduled: [],
+          finished: [],
+          byDate: {},
+        },
+        initialLiveGames: [],
+      },
+    };
+  }
 };
